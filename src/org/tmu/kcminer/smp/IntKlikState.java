@@ -1,10 +1,14 @@
 package org.tmu.kcminer.smp;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by Saeed on 8/8/14.
@@ -30,7 +34,7 @@ public class IntKlikState {
         return state;
     }
 
-    public static long count(IntGraph g, int k) throws IOException {
+    public static long count(IntGraph g, int l, int k) throws IOException {
         long count = 0;
         Stack<IntKlikState> q = new Stack<IntKlikState>();
         for (int v : g.vertices) {
@@ -40,12 +44,20 @@ public class IntKlikState {
         while (!q.isEmpty()) {
             IntKlikState state = q.pop();
             if (state.subgraph.length == k - 1) {
-                count += state.extension.length;
-                continue;
+                count++;
+                System.out.println(Arrays.toString(state.subgraph));
             }
+            if (state.subgraph.length >= l) {
+                count += state.extension.length;
+                for (int w : state.extension)
+                    System.out.println(Arrays.toString(add(state.subgraph, w)));
+            }
+            if (state.subgraph.length == k - 1)
+                continue;
+
             for (int w : state.extension) {
                 IntKlikState new_state = state.expand(w, g.getNeighbors(w));
-                if (new_state.subgraph.length + new_state.extension.length >= k)
+                if (new_state.subgraph.length + new_state.extension.length >= l)
                     q.add(new_state);
             }
         }
@@ -64,7 +76,6 @@ public class IntKlikState {
             threads[i] = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    int[] clique;
                     while (!cq.isEmpty()) {
                         Integer v = cq.poll();
                         if (v == null)
@@ -73,12 +84,13 @@ public class IntKlikState {
                         stack.add(new IntKlikState(v, g.getNeighbors(v)));
                         while (!stack.isEmpty()) {
                             IntKlikState state = stack.pop();
-                            if (state.subgraph.length == k - 1) {
+                            if (state.subgraph.length == k - 1)
                                 counter.getAndAdd(state.extension.length);
+                            if (state.subgraph.length >= lower)
+                                counter.getAndIncrement();
+                            if (state.subgraph.length == k - 1)
                                 continue;
-                            }
-                            if (state.subgraph.length >= lower - 1)
-                                counter.addAndGet(state.extension.length);
+
                             for (int w : state.extension) {
                                 IntKlikState new_state = state.expand(w, g.getNeighbors(w));
                                 if (new_state.subgraph.length + new_state.extension.length >= lower)
@@ -94,6 +106,84 @@ public class IntKlikState {
         for (int i = 0; i < threads.length; i++) {
             threads[i].join();
         }
+        return counter.get();
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(subgraph) + "->" + Arrays.toString(extension);
+    }
+
+    public static long parallelEnumerate(final IntGraph g, final int lower, final int k, final int thread_count, final String out_path) throws IOException, InterruptedException {
+        final AtomicLong counter = new AtomicLong();
+        final ConcurrentLinkedQueue<Integer> cq = new ConcurrentLinkedQueue<Integer>();
+        for (int v : g.vertices)
+            cq.add(v);
+        final FileWriter writer = new FileWriter(out_path);
+        final int flush_limit = 1024 * 64;
+        final ReentrantLock lock = new ReentrantLock();
+
+        Thread[] threads = new Thread[thread_count];
+        for (int i = 0; i < threads.length; i++) {
+            threads[i] = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    List<int[]> cliques = new ArrayList<int[]>(1024 * 64);
+                    while (!cq.isEmpty()) {
+                        Integer v = cq.poll();
+                        if (v == null)
+                            break;
+                        Stack<IntKlikState> stack = new Stack<IntKlikState>();
+                        stack.add(new IntKlikState(v, g.getNeighbors(v)));
+                        while (!stack.isEmpty()) {
+                            IntKlikState state = stack.pop();
+                            if (state.subgraph.length == k - 1) {
+                                counter.getAndAdd(state.extension.length);
+                                for (int w : state.extension)
+                                    cliques.add(add(state.subgraph, w));
+                            }
+                            if (state.subgraph.length >= lower) {
+                                counter.getAndIncrement();
+                                cliques.add(state.subgraph);
+                            }
+                            if (cliques.size() >= flush_limit) {
+                                lock.lock();
+                                for (int[] x : cliques)
+                                    try {
+                                        writer.write(Arrays.toString(x) + "\n");
+                                    } catch (IOException e) {
+                                        System.exit(-1);
+                                    }
+                                cliques.clear();
+                                lock.unlock();
+                            }
+                            if (state.subgraph.length == k - 1)
+                                continue;
+                            for (int w : state.extension) {
+                                IntKlikState new_state = state.expand(w, g.getNeighbors(w));
+                                if (new_state.subgraph.length + new_state.extension.length >= lower)
+                                    stack.add(new_state);
+                            }
+                        }
+                    }
+                    lock.lock();
+                    for (int[] x : cliques)
+                        try {
+                            writer.write(Arrays.toString(x) + "\n");
+                        } catch (IOException e) {
+                            System.exit(-1);
+                        }
+                    lock.unlock();
+                }
+            });
+            threads[i].start();
+        }
+
+        for (int i = 0; i < threads.length; i++) {
+            threads[i].join();
+        }
+
+        writer.close();
         return counter.get();
     }
 
@@ -123,6 +213,12 @@ public class IntKlikState {
             }
         }
         return Arrays.copyOf(result, k);
+    }
+
+    private static int[] add(int[] array, int x) {
+        int[] result = Arrays.copyOf(array, array.length + 1);
+        result[array.length] = x;
+        return result;
     }
 
 }

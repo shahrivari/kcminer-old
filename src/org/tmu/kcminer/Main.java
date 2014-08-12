@@ -49,7 +49,7 @@ public class Main {
             System.out.printf("Graph loaded in %s.\n", stopwatch.toString());
             stopwatch.reset().start();
             if (commandLine.hasOption("c")) {
-                long count = IntKlikState.parallelCount(graph, lowerBound, cliqueSize, threadCount);
+                long count = IntKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, "x:\\out.txt");
                 System.out.printf("Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
                 System.out.printf("Took in %s.\n", stopwatch.toString());
                 System.exit(0);
