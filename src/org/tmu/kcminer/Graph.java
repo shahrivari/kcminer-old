@@ -13,7 +13,7 @@ import java.util.Arrays;
  */
 public class Graph {
     LongOpenHashSet vertex_set = new LongOpenHashSet();
-    long[] vertices;
+    public long[] vertices;
     LongObjectOpenHashMap<long[]> adjArray = new LongObjectOpenHashMap<long[]>();
     LongObjectOpenHashMap<LongOpenHashSet> adjSet = new LongObjectOpenHashMap<LongOpenHashSet>();
 
