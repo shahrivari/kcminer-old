@@ -15,7 +15,7 @@ public class Main {
     static HelpFormatter formatter;
     static CommandLine commandLine;
     static String input_path;
-    static String output_path = "out.txt";
+    static String output_path = null;
     static boolean verbose = false;
     static int cliqueSize = 3;
     static int lowerBound = 3;
@@ -25,11 +25,12 @@ public class Main {
 
     private static void initCLI(String[] args) throws ParseException {
         options.addOption("i", "input", true, "the input file name.");
-        options.addOption("s", "size", true, "size of clique to enumerate.");
+        options.addOption("s", "size", true, "maximum size of clique to enumerate.");
         options.addOption("o", "output", true, "the output file name (default out.txt)");
         options.addOption("e", "enumerate", false, "enumerate cliques.");
         options.addOption("c", "count", false, "just count.");
         options.addOption("local", false, "run in local mode.");
+        options.addOption("m", false, "just maximals and upper size cliques.");
         options.addOption("l", "lower", true, "lower size for clique (default k).");
         options.addOption("t", "threads", true, "number of threads to use.");
         options.addOption("i32", false, "use 32-bit nodes.");
@@ -49,7 +50,7 @@ public class Main {
             System.out.printf("Graph loaded in %s.\n", stopwatch.toString());
             stopwatch.reset().start();
             if (commandLine.hasOption("c")) {
-                long count = IntKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, "x:\\out.txt");
+                long count = IntKlikState.parallelCount(graph, lowerBound, cliqueSize, threadCount);
                 System.out.printf("Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
                 System.out.printf("Took in %s.\n", stopwatch.toString());
                 System.exit(0);
@@ -60,8 +61,13 @@ public class Main {
             System.out.printf("Graph loaded in %s.\n", stopwatch.toString());
             stopwatch.reset().start();
             if (commandLine.hasOption("c")) {
-                long count = NGKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, false);
-                System.out.printf("Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
+                if (commandLine.hasOption("m")) {
+                    long count = NGKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, true, output_path);
+                    System.out.printf("Maximal Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
+                } else {
+                    long count = NGKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, false, output_path);
+                    System.out.printf("Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
+                }
                 System.out.printf("Took in %s.\n", stopwatch.toString());
                 System.exit(0);
             }
@@ -102,6 +108,10 @@ public class Main {
             formatter.printHelp(Main.class.toString(), options);
             System.exit(-1);
         }
+
+        if (commandLine.hasOption("o"))
+            output_path = commandLine.getOptionValue("o");
+
 
         if (commandLine.hasOption("local")) {
             localMain();
