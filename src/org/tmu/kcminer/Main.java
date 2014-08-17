@@ -30,7 +30,7 @@ public class Main {
         options.addOption("e", "enumerate", false, "enumerate cliques.");
         options.addOption("c", "count", false, "just count.");
         options.addOption("local", false, "run in local mode.");
-        options.addOption("m", false, "just maximals and upper size cliques.");
+        options.addOption("max", false, "just maximals and upper size cliques.");
         options.addOption("l", "lower", true, "lower size for clique (default k).");
         options.addOption("t", "threads", true, "number of threads to use.");
         options.addOption("i32", false, "use 32-bit nodes.");
@@ -43,6 +43,7 @@ public class Main {
         stopwatch.reset().start();
         if (commandLine.hasOption("t"))
             threadCount = Integer.parseInt(commandLine.getOptionValue("t"));
+        System.out.println("Running locally.");
 
         if (commandLine.hasOption("i32")) {//use 32-bit
             IntGraph graph = new IntGraph();
@@ -56,11 +57,19 @@ public class Main {
                 System.exit(0);
             }
         } else {
+            System.out.println("Using 64bit ids.");
             Graph graph = new Graph();
             graph.buildFromEdgeListFile(input_path);
             System.out.printf("Graph loaded in %s.\n", stopwatch.toString());
+            System.out.println(graph.getInfo());
             stopwatch.reset().start();
-            if (commandLine.hasOption("c")) {
+            if (commandLine.hasOption("c") || commandLine.hasOption("e")) {
+                if (commandLine.hasOption("c"))
+                    output_path = null;
+                else if (output_path == null) {
+                    System.out.println("An output file must be given.");
+                    System.exit(-1);
+                }
                 if (commandLine.hasOption("m")) {
                     long count = NGKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, true, output_path);
                     System.out.printf("Maximal Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
@@ -68,9 +77,12 @@ public class Main {
                     long count = NGKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, false, output_path);
                     System.out.printf("Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
                 }
-                System.out.printf("Took in %s.\n", stopwatch.toString());
-                System.exit(0);
+            } else {
+                System.out.println("No option is provided!");
+                System.exit(-1);
             }
+            System.out.printf("Took in %s.\n", stopwatch.toString());
+            System.exit(0);
         }
 
         System.exit(0);

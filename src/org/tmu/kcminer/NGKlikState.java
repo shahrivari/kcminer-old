@@ -208,7 +208,6 @@ public class NGKlikState {
         }
         if (writer != null)
             writer.close();
-        System.out.printf("cliques of size %d:  %,d\n", k, counter.get());
         return counter.get();
     }
 

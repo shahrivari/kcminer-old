@@ -2,6 +2,7 @@ package org.tmu.kcminer;
 
 import com.carrotsearch.hppc.LongObjectOpenHashMap;
 import com.carrotsearch.hppc.LongOpenHashSet;
+import com.carrotsearch.hppc.cursors.LongObjectCursor;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -44,7 +45,6 @@ public class Graph {
         return adjArray.get(v);
     }
 
-
     public void buildFromEdgeListFile(String path) throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(path));
         String line;
@@ -66,6 +66,16 @@ public class Graph {
         }
         update();
         br.close();
+    }
+
+    public String getInfo() {
+        String info = "#Nodes: " + String.format("%,d", vertices.length) + "\n";
+        long edges = 0;
+        for (LongObjectCursor<long[]> x : adjArray)
+            edges += x.value.length;
+        info += "#Edges: " + String.format("%,d", edges) + "\n";
+        info += "AVG(degree): " + String.format("%.2f", edges / (double) vertices.length);
+        return info;
     }
 
 }
