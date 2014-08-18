@@ -4,6 +4,7 @@ package org.tmu.kcminer.smp;
 import com.carrotsearch.hppc.IntObjectOpenHashMap;
 import com.carrotsearch.hppc.IntOpenHashSet;
 import com.carrotsearch.hppc.cursors.IntCursor;
+import com.carrotsearch.hppc.cursors.IntObjectCursor;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -68,4 +69,16 @@ public class IntGraph {
         update();
         br.close();
     }
+
+    public String getInfo() {
+        String info = "#Nodes: " + String.format("%,d", vertices.length) + "\n";
+        long edges = 0;
+        for (IntObjectCursor<int[]> x : adjArray)
+            edges += x.value.length;
+        info += "#Edges: " + String.format("%,d", edges) + "\n";
+        info += "AVG(degree): " + String.format("%.2f", edges / (double) vertices.length);
+        return info;
+    }
+
+
 }

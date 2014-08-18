@@ -46,15 +46,26 @@ public class Main {
         System.out.println("Running locally.");
 
         if (commandLine.hasOption("i32")) {//use 32-bit
+            System.out.println("Using 32bit ids.");
             IntGraph graph = new IntGraph();
             graph.buildFromEdgeListFile(input_path);
             System.out.printf("Graph loaded in %s.\n", stopwatch.toString());
+            System.out.println(graph.getInfo());
             stopwatch.reset().start();
-            if (commandLine.hasOption("c")) {
-                long count = IntKlikState.parallelCount(graph, lowerBound, cliqueSize, threadCount);
+            if (commandLine.hasOption("c") || commandLine.hasOption("e")) {
+                if (commandLine.hasOption("c"))
+                    output_path = null;
+                else if (output_path == null && commandLine.hasOption("e")) {
+                    System.out.println("An output file must be given.");
+                    System.exit(-1);
+                }
+                long count = IntKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, output_path);
                 System.out.printf("Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
                 System.out.printf("Took in %s.\n", stopwatch.toString());
                 System.exit(0);
+            } else {
+                System.out.println("In 32bit id mode, just fixed size cliques can be handled!");
+                System.exit(-1);
             }
         } else {
             System.out.println("Using 64bit ids.");
@@ -81,7 +92,7 @@ public class Main {
                 System.out.println("No option is provided!");
                 System.exit(-1);
             }
-            System.out.printf("Took in %s.\n", stopwatch.toString());
+            System.out.printf("Took %s.\n", stopwatch.toString());
             System.exit(0);
         }
 

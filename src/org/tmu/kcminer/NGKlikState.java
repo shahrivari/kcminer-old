@@ -19,6 +19,11 @@ public class NGKlikState {
     LongArrayList extension;
     LongArrayList tabu;
 
+    static private FileWriter writer = null;
+    final static private ReentrantLock lock = new ReentrantLock();
+    final static int flushLimit = 1024 * 1024;
+
+
     public NGKlikState(long v, long[] neighbors) {
         subgraph = new long[]{v};
         extension = LongArrayList.newInstanceWithCapacity(neighbors.length);
@@ -116,12 +121,9 @@ public class NGKlikState {
         for (long v : g.vertices)
             cq.add(v);
 
-        FileWriter writer1 = null;
         if (path != null)
-            writer1 = new FileWriter(path);
-        final FileWriter writer = writer1;
-        final ReentrantLock lock = new ReentrantLock();
-        final int bufferCap = 1024000;
+            writer = new FileWriter(path);
+        final FileWriter writer = NGKlikState.writer;
 
 
         Thread[] threads = new Thread[thread_count];
@@ -129,7 +131,6 @@ public class NGKlikState {
             threads[i] = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    //ArrayList<long[]> buffer = new ArrayList<long[]>(1024);
                     StringBuilder builder = new StringBuilder(10240);
                     while (!cq.isEmpty()) {
                         Long v = cq.poll();
@@ -143,19 +144,16 @@ public class NGKlikState {
                                 counter.getAndAdd(state.extension.elementsCount);
                                 if (writer != null)
                                     for (LongCursor cursor : state.extension)
-                                        //buffer.add(state.getClique(cursor.value));
                                         builder.append(cliqueToString(state.getClique(cursor.value))).append("\n");
                             }
                             if (state.subgraph.length >= lower)
                                 if (!maximal) {
                                     counter.getAndIncrement();
                                     if (writer != null)
-                                        //buffer.add(state.subgraph);
                                         builder.append(cliqueToString(state.subgraph)).append("\n");
                                 } else if (state.extension.isEmpty() && state.tabu.isEmpty()) {
                                     counter.getAndIncrement();
                                     if (writer != null)
-                                        //buffer.add(state.subgraph);
                                         builder.append(cliqueToString(state.subgraph)).append("\n");
                                 }
                             if (state.subgraph.length == k - 1)
@@ -169,35 +167,12 @@ public class NGKlikState {
                                 if (new_state.subgraph.length + new_state.extension.elementsCount >= lower)
                                     stack.add(new_state);
                             }
-                            if (builder.length() > bufferCap) {
-                                lock.lock();
-                                try {
-                                    //for (long[] clique : buffer)
-                                    //    writer.write(cliqueToString(clique)+"\n");
-                                    writer.write(builder.toString());
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                    System.exit(-1);
-                                } finally {
-                                    lock.unlock();
-                                }
-                                builder.setLength(0);
-                            }
+                            if (builder.length() > flushLimit && writer != null)
+                                flush(builder);
                         }
                     }
-                    lock.lock();
-                    try {
-                        //for (long[] clique : buffer)
-                        //    writer.write(cliqueToString(clique)+"\n");
-                        if (writer != null && builder.length() > 0)
-                            writer.write(builder.toString());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        System.exit(-1);
-                    } finally {
-                        lock.unlock();
-                    }
-                    builder.setLength(0);
+                    if (writer != null)
+                        flush(builder);
                 }
             });
             threads[i].start();
@@ -209,6 +184,19 @@ public class NGKlikState {
         if (writer != null)
             writer.close();
         return counter.get();
+    }
+
+    private static void flush(StringBuilder builder) {
+        lock.lock();
+        try {
+            writer.write(builder.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(-1);
+        } finally {
+            lock.unlock();
+        }
+        builder.setLength(0);
     }
 
 

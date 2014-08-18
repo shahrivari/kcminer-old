@@ -2,9 +2,7 @@ package org.tmu.kcminer.smp;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,6 +14,10 @@ import java.util.concurrent.locks.ReentrantLock;
 public class IntKlikState {
     int[] subgraph;
     int[] extension;
+
+    static private FileWriter writer = null;
+    final static private ReentrantLock lock = new ReentrantLock();
+    final static int flushLimit = 1024 * 1024;
 
     public IntKlikState(int v, int[] neighbors) {
         subgraph = new int[]{v};
@@ -34,36 +36,42 @@ public class IntKlikState {
         return state;
     }
 
-    public static long count(IntGraph g, int l, int k) throws IOException {
-        long count = 0;
-        Stack<IntKlikState> q = new Stack<IntKlikState>();
-        for (int v : g.vertices) {
-            q.add(new IntKlikState(v, g.getNeighbors(v)));
-        }
-
-        while (!q.isEmpty()) {
-            IntKlikState state = q.pop();
-            if (state.subgraph.length == k - 1) {
-                count++;
-                System.out.println(Arrays.toString(state.subgraph));
-            }
-            if (state.subgraph.length >= l) {
-                count += state.extension.length;
-                for (int w : state.extension)
-                    System.out.println(Arrays.toString(add(state.subgraph, w)));
-            }
-            if (state.subgraph.length == k - 1)
-                continue;
-
-            for (int w : state.extension) {
-                IntKlikState new_state = state.expand(w, g.getNeighbors(w));
-                if (new_state.subgraph.length + new_state.extension.length >= l)
-                    q.add(new_state);
-            }
-        }
-        System.out.printf("cliques of size %d:  %,d\n", k, count);
-        return count;
+    public int[] getClique(int w) {
+        int[] clique = Arrays.copyOf(subgraph, subgraph.length + 1);
+        clique[clique.length - 1] = w;
+        return clique;
     }
+
+
+//    public static long count(IntGraph g, int l, int k) throws IOException {
+//        long count = 0;
+//        Stack<IntKlikState> q = new Stack<IntKlikState>();
+//        for (int v : g.vertices) {
+//            q.add(new IntKlikState(v, g.getNeighbors(v)));
+//        }
+//
+//        while (!q.isEmpty()) {
+//            IntKlikState state = q.pop();
+//            if (state.subgraph.length == k - 1) {
+//                count++;
+//                System.out.println(Arrays.toString(state.subgraph));
+//            }
+//            if (state.subgraph.length >= l) {
+//                count += state.extension.length;
+//                for (int w : state.extension)
+//                    System.out.println(Arrays.toString(addToArray(state.subgraph, w)));
+//            }
+//            if (state.subgraph.length == k - 1)
+//                continue;
+//
+//            for (int w : state.extension) {
+//                IntKlikState new_state = state.expand(w, g.getNeighbors(w));
+//                if (new_state.subgraph.length + new_state.extension.length >= l)
+//                    q.addToArray(new_state);
+//            }
+//        }
+//        return count;
+//    }
 
     public static long parallelCount(final IntGraph g, final int lower, final int k, final int thread_count) throws IOException, InterruptedException {
         final AtomicLong counter = new AtomicLong();
@@ -114,21 +122,22 @@ public class IntKlikState {
         return Arrays.toString(subgraph) + "->" + Arrays.toString(extension);
     }
 
+
     public static long parallelEnumerate(final IntGraph g, final int lower, final int k, final int thread_count, final String out_path) throws IOException, InterruptedException {
         final AtomicLong counter = new AtomicLong();
         final ConcurrentLinkedQueue<Integer> cq = new ConcurrentLinkedQueue<Integer>();
         for (int v : g.vertices)
             cq.add(v);
-        final FileWriter writer = new FileWriter(out_path);
-        final int flush_limit = 1024 * 64;
-        final ReentrantLock lock = new ReentrantLock();
+        if (out_path != null)
+            IntKlikState.writer = new FileWriter(out_path);
+        final FileWriter writer = IntKlikState.writer;
 
         Thread[] threads = new Thread[thread_count];
         for (int i = 0; i < threads.length; i++) {
             threads[i] = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    List<int[]> cliques = new ArrayList<int[]>(1024 * 64);
+                    StringBuilder buffer = new StringBuilder(0124);
                     while (!cq.isEmpty()) {
                         Integer v = cq.poll();
                         if (v == null)
@@ -140,22 +149,13 @@ public class IntKlikState {
                             if (state.subgraph.length == k - 1) {
                                 counter.getAndAdd(state.extension.length);
                                 for (int w : state.extension)
-                                    cliques.add(add(state.subgraph, w));
+                                    if (writer != null)
+                                        buffer.append(cliqueToString(state.getClique(w))).append("\n");
                             }
                             if (state.subgraph.length >= lower) {
                                 counter.getAndIncrement();
-                                cliques.add(state.subgraph);
-                            }
-                            if (cliques.size() >= flush_limit) {
-                                lock.lock();
-                                for (int[] x : cliques)
-                                    try {
-                                        writer.write(Arrays.toString(x) + "\n");
-                                    } catch (IOException e) {
-                                        System.exit(-1);
-                                    }
-                                cliques.clear();
-                                lock.unlock();
+                                if (writer != null)
+                                    buffer.append(cliqueToString(state.subgraph)).append("\n");
                             }
                             if (state.subgraph.length == k - 1)
                                 continue;
@@ -164,16 +164,12 @@ public class IntKlikState {
                                 if (new_state.subgraph.length + new_state.extension.length >= lower)
                                     stack.add(new_state);
                             }
+                            if (buffer.length() > flushLimit && writer != null)
+                                flush(buffer);
                         }
                     }
-                    lock.lock();
-                    for (int[] x : cliques)
-                        try {
-                            writer.write(Arrays.toString(x) + "\n");
-                        } catch (IOException e) {
-                            System.exit(-1);
-                        }
-                    lock.unlock();
+                    if (writer != null)
+                        flush(buffer);
                 }
             });
             threads[i].start();
@@ -183,8 +179,22 @@ public class IntKlikState {
             threads[i].join();
         }
 
-        writer.close();
+        if (writer != null)
+            writer.close();
         return counter.get();
+    }
+
+    private static void flush(StringBuilder builder) {
+        lock.lock();
+        try {
+            writer.write(builder.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(-1);
+        } finally {
+            lock.unlock();
+        }
+        builder.setLength(0);
     }
 
 
@@ -215,10 +225,20 @@ public class IntKlikState {
         return Arrays.copyOf(result, k);
     }
 
-    private static int[] add(int[] array, int x) {
+    private static int[] addToArray(int[] array, int x) {
         int[] result = Arrays.copyOf(array, array.length + 1);
         result[array.length] = x;
         return result;
+    }
+
+    public static String cliqueToString(int[] clique) {
+        StringBuilder builder = new StringBuilder(clique.length * 8);
+        if (clique.length == 1)
+            return Integer.toString(clique[0]);
+        for (int i = 0; i < clique.length - 1; i++)
+            builder.append(clique[i]).append("\t");
+        builder.append(clique[clique.length - 1]);
+        return builder.toString();
     }
 
 }
