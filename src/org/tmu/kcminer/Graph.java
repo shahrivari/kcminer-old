@@ -4,9 +4,7 @@ import com.carrotsearch.hppc.LongObjectOpenHashMap;
 import com.carrotsearch.hppc.LongOpenHashSet;
 import com.carrotsearch.hppc.cursors.LongObjectCursor;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.Arrays;
 
 /**
@@ -45,7 +43,7 @@ public class Graph {
         return adjArray.get(v);
     }
 
-    public void buildFromEdgeListFile(String path) throws IOException {
+    public void loadFromEdgeListFile(String path) throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(path));
         String line;
         while ((line = br.readLine()) != null) {
@@ -76,6 +74,47 @@ public class Graph {
         info += "#Edges: " + String.format("%,d", edges) + "\n";
         info += "AVG(degree): " + String.format("%.2f", edges / (double) vertices.length);
         return info;
+    }
+
+    private static void delete(File f) throws IOException {
+        if (f.isDirectory()) {
+            for (File c : f.listFiles())
+                delete(c);
+        }
+        if (!f.delete())
+            throw new FileNotFoundException("Failed to delete file: " + f);
+    }
+
+    public static void layEdgeListToDisk(String in_path, String out_dir, int bucket_count) throws IOException {
+        //clear the directory
+        if (new File(out_dir).exists())
+            delete(new File(out_dir));
+        new File(out_dir).mkdir();
+
+        DataOutputStream[] ostreams = new DataOutputStream[bucket_count];
+        for (int i = 0; i < bucket_count; i++)
+            ostreams[i] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(out_dir + "/" + String.valueOf(i)), 512 * 1024));
+
+
+        BufferedReader br = new BufferedReader(new FileReader(in_path));
+        String line;
+        while ((line = br.readLine()) != null) {
+            if (line.isEmpty())
+                continue;
+            if (line.startsWith("#")) {
+                System.err.printf("Skipped a line: [%s]\n", line);
+                continue;
+            }
+            String[] tokens = line.split("\\s+");
+            if (tokens.length < 2) {
+                System.err.printf("Skipped a line: [%s]\n", line);
+                continue;
+            }
+            long src = Long.parseLong(tokens[0]);
+            long dest = Long.parseLong(tokens[1]);
+
+
+        }
     }
 
 }

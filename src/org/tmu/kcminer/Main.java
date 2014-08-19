@@ -52,6 +52,10 @@ public class Main {
             System.out.printf("Graph loaded in %s.\n", stopwatch.toString());
             System.out.println(graph.getInfo());
             stopwatch.reset().start();
+            if (commandLine.hasOption("max")) {
+                System.out.printf("Maximal Cliques are not supported in 32bit ids.\n");
+                System.exit(1);
+            }
             if (commandLine.hasOption("c") || commandLine.hasOption("e")) {
                 if (commandLine.hasOption("c"))
                     output_path = null;
@@ -70,7 +74,7 @@ public class Main {
         } else {
             System.out.println("Using 64bit ids.");
             Graph graph = new Graph();
-            graph.buildFromEdgeListFile(input_path);
+            graph.loadFromEdgeListFile(input_path);
             System.out.printf("Graph loaded in %s.\n", stopwatch.toString());
             System.out.println(graph.getInfo());
             stopwatch.reset().start();
@@ -81,11 +85,11 @@ public class Main {
                     System.out.println("An output file must be given.");
                     System.exit(-1);
                 }
-                if (commandLine.hasOption("m")) {
-                    long count = NGKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, true, output_path);
+                if (commandLine.hasOption("max")) {
+                    long count = KlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, true, output_path);
                     System.out.printf("Maximal Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
                 } else {
-                    long count = NGKlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, false, output_path);
+                    long count = KlikState.parallelEnumerate(graph, lowerBound, cliqueSize, threadCount, false, output_path);
                     System.out.printf("Cliques of size %d to %d: %,d\n", lowerBound, cliqueSize, count);
                 }
             } else {
@@ -135,7 +139,6 @@ public class Main {
         if (commandLine.hasOption("o"))
             output_path = commandLine.getOptionValue("o");
 
-
         if (commandLine.hasOption("local")) {
             localMain();
         } else {
@@ -143,28 +146,5 @@ public class Main {
             formatter.printHelp(Main.class.toString(), options);
             System.exit(-1);
         }
-
-
-//        int k=Integer.parseInt(args[1]);
-//        IntGraph graph = new IntGraph();
-//        graph.buildFromEdgeListFile(args[0]);//"x:\\networks\\slash.txt");
-//        Graph lg=new Graph();
-//        lg.buildFromEdgeListFile(args[0]);//"x:\\networks\\slash.txt");
-//        System.out.println("Loaded");
-//        long t0=System.nanoTime();
-//        //BronState.penumerate(graph, 7,4);
-//        IntKlikState.count(graph, k);
-//        System.out.printf("Took: %,d\n",(System.nanoTime()-t0)/1000000);
-//        t0=System.nanoTime();
-//        IntKlikState.parallelCount(graph, k);
-//        System.out.printf("Took: %,d\n",(System.nanoTime()-t0)/1000000);
-//
-//        t0=System.nanoTime();
-//        KlikState.count(lg, k);
-//        System.out.printf("Took: %,d\n",(System.nanoTime()-t0)/1000000);
-//        t0=System.nanoTime();
-//        KlikState.parallelCount(lg, k);
-//        System.out.printf("Took: %,d\n",(System.nanoTime()-t0)/1000000);
-
     }
 }
