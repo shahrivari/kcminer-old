@@ -113,8 +113,16 @@ public class Graph {
             long src = Long.parseLong(tokens[0]);
             long dest = Long.parseLong(tokens[1]);
 
-
+            int bucket = Hash.longToBucket(src, bucket_count);
+            if (bucket < 0) {
+                System.out.printf("%d %d\n", src, bucket);
+                Hash.longToBucket(src, bucket_count);
+            }
+            ostreams[bucket].writeLong(src);
+            ostreams[bucket].writeLong(dest);
         }
+        for (DataOutputStream s : ostreams)
+            s.close();
     }
 
 }
