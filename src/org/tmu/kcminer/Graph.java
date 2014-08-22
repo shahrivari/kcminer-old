@@ -6,6 +6,8 @@ import com.carrotsearch.hppc.cursors.LongObjectCursor;
 import com.google.common.io.Files;
 
 import java.io.*;
+import java.nio.LongBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
 /**
@@ -133,25 +135,27 @@ public class Graph {
         for (int i = 0; i < bucket_count; i++) {
             //DataInputStream istream = new DataInputStream(new BufferedInputStream(new FileInputStream(out_dir + "/" + String.valueOf(i)+".bin"),1024*1024));
             System.out.println(out_dir + "/" + String.valueOf(i) + ".bin");
-            byte[] bb = Files.toByteArray(new File(out_dir + "/" + String.valueOf(i) + ".bin"));
-            DataInputStream istream = new DataInputStream(new ByteArrayInputStream(bb));
+            //byte[] bb = Files.toByteArray(new File(out_dir + "/" + String.valueOf(i) + ".bin"));
+            //DataInputStream istream = new DataInputStream(new ByteArrayInputStream(bb));
+            LongBuffer buf = Files.map(new File(out_dir + "/" + String.valueOf(i) + ".bin"), FileChannel.MapMode.READ_ONLY).asLongBuffer();
+
             Graph g = new Graph();
-            while (true) {
-                try {
-                    long src = istream.readLong();
-                    long dest = istream.readLong();
-                    g.vertex_set.add(src);
+            while (buf.hasRemaining()) {
+//                try {
+                long src = buf.get();//istream.readLong();
+                long dest = buf.get();//istream.readLong();
+                g.vertex_set.add(src);
                     if (!g.adjSet.containsKey(src))
                         g.adjSet.put(src, new LongOpenHashSet());
                     g.adjSet.get(src).add(dest);
-                    if (istream.available() == 0)
-                        break;
-                } catch (EOFException exp) {
-                    exp.printStackTrace();
-                    System.exit(-1);
-                }
+//                    if (buf.re == 0)
+//                        break;
+//                } catch (EOFException exp) {
+//                    exp.printStackTrace();
+//                    System.exit(-1);
+//                }
             }
-            istream.close();
+            //istream.close();
             g.update();
             for (LongObjectCursor<long[]> cur : g.adjArray) {
                 ostreams[i].writeLong(cur.key);
