@@ -7,8 +7,9 @@ import java.io.IOException;
  */
 public class Test {
     public static void main(String[] args) throws IOException {
-
-        Graph.layEdgeListToDisk("d:\\temp\\sign.txt", "d:\\lay", 128);
+        Stopwatch stopwatch = new Stopwatch().start();
+        Graph.layEdgeListToDisk("F:\\nets\\web-BerkStan.txt", "x:\\lay", 32);
+        System.out.println(stopwatch);
 
     }
 

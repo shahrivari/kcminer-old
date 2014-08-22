@@ -3,6 +3,7 @@ package org.tmu.kcminer;
 import com.carrotsearch.hppc.LongObjectOpenHashMap;
 import com.carrotsearch.hppc.LongOpenHashSet;
 import com.carrotsearch.hppc.cursors.LongObjectCursor;
+import com.google.common.io.Files;
 
 import java.io.*;
 import java.util.Arrays;
@@ -85,6 +86,7 @@ public class Graph {
             throw new FileNotFoundException("Failed to delete file: " + f);
     }
 
+
     public static void layEdgeListToDisk(String in_path, String out_dir, int bucket_count) throws IOException {
         //clear the directory
         if (new File(out_dir).exists())
@@ -93,7 +95,7 @@ public class Graph {
 
         DataOutputStream[] ostreams = new DataOutputStream[bucket_count];
         for (int i = 0; i < bucket_count; i++)
-            ostreams[i] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(out_dir + "/" + String.valueOf(i)), 512 * 1024));
+            ostreams[i] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(out_dir + "/" + String.valueOf(i) + ".bin"), 512 * 1024));
 
 
         BufferedReader br = new BufferedReader(new FileReader(in_path));
@@ -123,6 +125,43 @@ public class Graph {
         }
         for (DataOutputStream s : ostreams)
             s.close();
+
+        for (int i = 0; i < bucket_count; i++)
+            ostreams[i] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(out_dir + "/" + String.valueOf(i) + ".gseg"), 512 * 1024));
+
+
+        for (int i = 0; i < bucket_count; i++) {
+            //DataInputStream istream = new DataInputStream(new BufferedInputStream(new FileInputStream(out_dir + "/" + String.valueOf(i)+".bin"),1024*1024));
+            System.out.println(out_dir + "/" + String.valueOf(i) + ".bin");
+            byte[] bb = Files.toByteArray(new File(out_dir + "/" + String.valueOf(i) + ".bin"));
+            DataInputStream istream = new DataInputStream(new ByteArrayInputStream(bb));
+            Graph g = new Graph();
+            while (true) {
+                try {
+                    long src = istream.readLong();
+                    long dest = istream.readLong();
+                    g.vertex_set.add(src);
+                    if (!g.adjSet.containsKey(src))
+                        g.adjSet.put(src, new LongOpenHashSet());
+                    g.adjSet.get(src).add(dest);
+                    if (istream.available() == 0)
+                        break;
+                } catch (EOFException exp) {
+                    exp.printStackTrace();
+                    System.exit(-1);
+                }
+            }
+            istream.close();
+            g.update();
+            for (LongObjectCursor<long[]> cur : g.adjArray) {
+                ostreams[i].writeLong(cur.key);
+                for (long l : cur.value)
+                    ostreams[i].writeLong(l);
+            }
+            ostreams[i].close();
+            new File(out_dir + "/" + String.valueOf(i) + ".bin").delete();
+        }
+
     }
 
 }
