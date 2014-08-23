@@ -6,8 +6,8 @@ import com.carrotsearch.hppc.cursors.LongObjectCursor;
 import com.google.common.io.Files;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
-import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
 /**
@@ -94,11 +94,11 @@ public class Graph {
         if (new File(out_dir).exists())
             delete(new File(out_dir));
         new File(out_dir).mkdir();
+        new File(out_dir + "/tmp/").mkdir();
 
         DataOutputStream[] ostreams = new DataOutputStream[bucket_count];
         for (int i = 0; i < bucket_count; i++)
-            ostreams[i] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(out_dir + "/" + String.valueOf(i) + ".bin"), 512 * 1024));
-
+            ostreams[i] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(out_dir + "/tmp/" + String.valueOf(i) + ".bin"), 512 * 1024));
 
         BufferedReader br = new BufferedReader(new FileReader(in_path));
         String line;
@@ -125,6 +125,7 @@ public class Graph {
             ostreams[bucket].writeLong(src);
             ostreams[bucket].writeLong(dest);
         }
+
         for (DataOutputStream s : ostreams)
             s.close();
 
@@ -133,39 +134,28 @@ public class Graph {
 
 
         for (int i = 0; i < bucket_count; i++) {
-            //DataInputStream istream = new DataInputStream(new BufferedInputStream(new FileInputStream(out_dir + "/" + String.valueOf(i)+".bin"),1024*1024));
-            System.out.println(out_dir + "/" + String.valueOf(i) + ".bin");
-            //byte[] bb = Files.toByteArray(new File(out_dir + "/" + String.valueOf(i) + ".bin"));
-            //DataInputStream istream = new DataInputStream(new ByteArrayInputStream(bb));
-            LongBuffer buf = Files.map(new File(out_dir + "/" + String.valueOf(i) + ".bin"), FileChannel.MapMode.READ_ONLY).asLongBuffer();
+            byte[] bb = Files.toByteArray(new File(out_dir + "/tmp/" + String.valueOf(i) + ".bin"));
+            LongBuffer buffer = ByteBuffer.wrap(bb).asLongBuffer();
 
             Graph g = new Graph();
-            while (buf.hasRemaining()) {
-//                try {
-                long src = buf.get();//istream.readLong();
-                long dest = buf.get();//istream.readLong();
+            while (buffer.hasRemaining()) {
+                long src = buffer.get();
+                long dest = buffer.get();
                 g.vertex_set.add(src);
                     if (!g.adjSet.containsKey(src))
                         g.adjSet.put(src, new LongOpenHashSet());
                     g.adjSet.get(src).add(dest);
-//                    if (buf.re == 0)
-//                        break;
-//                } catch (EOFException exp) {
-//                    exp.printStackTrace();
-//                    System.exit(-1);
-//                }
             }
-            //istream.close();
             g.update();
             for (LongObjectCursor<long[]> cur : g.adjArray) {
                 ostreams[i].writeLong(cur.key);
+                ostreams[i].writeInt(cur.value.length);
                 for (long l : cur.value)
                     ostreams[i].writeLong(l);
             }
             ostreams[i].close();
-            new File(out_dir + "/" + String.valueOf(i) + ".bin").delete();
+            new File(out_dir + "/tmp/" + String.valueOf(i) + ".bin").delete();
         }
-
     }
 
 }
