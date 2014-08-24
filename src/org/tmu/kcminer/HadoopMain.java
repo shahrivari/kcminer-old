@@ -1,7 +1,5 @@
 package org.tmu.kcminer;
 
-import com.carrotsearch.hppc.LongOpenHashSet;
-import com.carrotsearch.hppc.cursors.LongCursor;
 import org.apache.commons.cli.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -16,12 +14,15 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.HashSet;
 
 /**
  * Created by Saeed on 8/24/14.
@@ -109,6 +110,7 @@ public class HadoopMain extends Configured implements Tool {
         job.getConfiguration().set("mapred.task.timeout", "36000000");
         FileInputFormat.addInputPath(job, input_path);
         job.setInputFormatClass(TextInputFormat.class);
+        job.setOutputFormatClass(SequenceFileOutputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/graph"));
         System.out.println("Set Reduce tasks to " + nReduces);
         job.setNumReduceTasks(nReduces);
@@ -146,19 +148,39 @@ public class HadoopMain extends Configured implements Tool {
     }
 
     public static class GraphLayerReduce extends Reducer<LongWritable, LongWritable, LongWritable, LongArrayWritable> {
-
-
         public void reduce(LongWritable key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
-            LongOpenHashSet set = new LongOpenHashSet();
-            for (LongWritable l : values)
-                set.add(l.get());
-            LongWritable[] array = new LongWritable[set.size()];
-            int i = 0;
-            for (LongCursor x : set)
-                array[i++] = new LongWritable(x.value);
-            LongArrayWritable warr = new LongArrayWritable();
-            warr.set(array);
-            context.write(key, warr);
+            HashSet<LongWritable> set = new HashSet<LongWritable>();
+            for (LongWritable l : values) {
+                set.add(l);
+                context.getCounter("Graph", "#Edges_vis").increment(1);
+            }
+            context.getCounter("Graph", "#Nodes").increment(1);
+            context.getCounter("Graph", "#Edges").increment(set.size());
+            LongArrayWritable val = new LongArrayWritable();
+            LongWritable[] array = set.toArray(new LongWritable[set.size()]);
+            Arrays.sort(array);
+            val.set(array);
+            context.write(key, val);
+
+//            LongOpenHashSet set = new LongOpenHashSet();
+//            for (LongWritable l : values)
+//                set.add(l.get());
+//            long[] arr = set.toArray();
+//            Arrays.sort(arr);
+//            ByteBuffer bb=ByteBuffer.allocate(8*arr.length+1);
+//            bb.asLongBuffer().put(arr);
+//            bb.put((byte)1);
+//            context.getCounter("Graph","#Nodes").increment(1);
+//            context.getCounter("Graph","#Edges").increment(set.size());
+//            context.write(key,new BytesWritable(bb.array()));
+
+//            LongWritable[] array = new LongWritable[set.size()];
+//            int i = 0;
+//            for (LongCursor x : set)
+//                array[i++] = new LongWritable(x.value);
+//            LongArrayWritable warr = new LongArrayWritable();
+//            warr.set(array);
+//            context.write(key, warr);
         }
     }
 

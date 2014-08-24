@@ -40,8 +40,8 @@ public class KlikState {
     private KlikState() {
     }
 
-    public byte[] toBytes() {
-        ByteBuffer bb = ByteBuffer.allocate(3 * Integer.SIZE + subgraph.length * Long.SIZE + extension.elementsCount * Long.SIZE + tabu.elementsCount * Long.SIZE + Long.SIZE);
+    public byte[] toBytesZeroTerminated() {
+        ByteBuffer bb = ByteBuffer.allocate(3 * Integer.SIZE + subgraph.length * Long.SIZE + extension.elementsCount * Long.SIZE + tabu.elementsCount * Long.SIZE + Long.SIZE + 1);
         bb.putInt(subgraph.length);
         for (long x : subgraph)
             bb.putLong(x);
@@ -55,6 +55,7 @@ public class KlikState {
         } else
             bb.putInt(0);
         bb.putLong(w);
+        bb.put((byte) 0);
         return bb.array();
     }
 

@@ -27,7 +27,7 @@ public class DiskKlik {
             Graph g = Graph.loadFromSegment(root_dir, segment);
             for (long v : g.vertices) {
                 KlikState state = new KlikState(v, g.getNeighbors(v));
-                byte[] bytes = state.toBytes();
+                byte[] bytes = state.toBytesZeroTerminated();
                 int bucket = Util.longToBucket(v, segments);
                 ostreams[bucket].writeInt(bytes.length);
                 ostreams[bucket].write(bytes);
