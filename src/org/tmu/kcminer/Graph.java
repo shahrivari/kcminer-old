@@ -19,6 +19,9 @@ public class Graph {
     LongObjectOpenHashMap<long[]> adjArray = new LongObjectOpenHashMap<long[]>();
     LongObjectOpenHashMap<LongOpenHashSet> adjSet = new LongObjectOpenHashMap<LongOpenHashSet>();
 
+    private void Graph() {
+    }
+
     private void addEdge(long v, long w) {
         vertex_set.add(v, w);
         if (!adjSet.containsKey(v))
@@ -46,7 +49,8 @@ public class Graph {
         return adjArray.get(v);
     }
 
-    public void loadFromEdgeListFile(String path) throws IOException {
+    public static Graph buildFromEdgeListFile(String path) throws IOException {
+        Graph g = new Graph();
         BufferedReader br = new BufferedReader(new FileReader(path));
         String line;
         while ((line = br.readLine()) != null) {
@@ -63,10 +67,11 @@ public class Graph {
             }
             long src = Long.parseLong(tokens[0]);
             long dest = Long.parseLong(tokens[1]);
-            addEdge(src, dest);
+            g.addEdge(src, dest);
         }
-        update();
+        g.update();
         br.close();
+        return g;
     }
 
     public String getInfo() {
@@ -79,22 +84,15 @@ public class Graph {
         return info;
     }
 
-    private static void delete(File f) throws IOException {
-        if (f.isDirectory()) {
-            for (File c : f.listFiles())
-                delete(c);
-        }
-        if (!f.delete())
-            throw new FileNotFoundException("Failed to delete file: " + f);
-    }
 
 
     public static void layEdgeListToDisk(String in_path, String out_dir, int bucket_count) throws IOException {
         //clear the directory
         if (new File(out_dir).exists())
-            delete(new File(out_dir));
+            Util.deleteDirectory(new File(out_dir));
         new File(out_dir).mkdir();
         new File(out_dir + "/tmp/").mkdir();
+        new File(out_dir + "/graph/").mkdir();
 
         DataOutputStream[] ostreams = new DataOutputStream[bucket_count];
         for (int i = 0; i < bucket_count; i++)
@@ -117,10 +115,10 @@ public class Graph {
             long src = Long.parseLong(tokens[0]);
             long dest = Long.parseLong(tokens[1]);
 
-            int bucket = Hash.longToBucket(src, bucket_count);
+            int bucket = Util.longToBucket(src, bucket_count);
             if (bucket < 0) {
                 System.out.printf("%d %d\n", src, bucket);
-                Hash.longToBucket(src, bucket_count);
+                Util.longToBucket(src, bucket_count);
             }
             ostreams[bucket].writeLong(src);
             ostreams[bucket].writeLong(dest);
@@ -130,21 +128,20 @@ public class Graph {
             s.close();
 
         for (int i = 0; i < bucket_count; i++)
-            ostreams[i] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(out_dir + "/" + String.valueOf(i) + ".gseg"), 512 * 1024));
+            ostreams[i] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(out_dir + "/graph/" + String.valueOf(i) + ".gseg"), 512 * 1024));
 
 
         for (int i = 0; i < bucket_count; i++) {
             byte[] bb = Files.toByteArray(new File(out_dir + "/tmp/" + String.valueOf(i) + ".bin"));
             LongBuffer buffer = ByteBuffer.wrap(bb).asLongBuffer();
-
             Graph g = new Graph();
             while (buffer.hasRemaining()) {
                 long src = buffer.get();
                 long dest = buffer.get();
                 g.vertex_set.add(src);
-                    if (!g.adjSet.containsKey(src))
-                        g.adjSet.put(src, new LongOpenHashSet());
-                    g.adjSet.get(src).add(dest);
+                if (!g.adjSet.containsKey(src))
+                    g.adjSet.put(src, new LongOpenHashSet());
+                g.adjSet.get(src).add(dest);
             }
             g.update();
             for (LongObjectCursor<long[]> cur : g.adjArray) {
@@ -154,8 +151,27 @@ public class Graph {
                     ostreams[i].writeLong(l);
             }
             ostreams[i].close();
+            System.out.println("Done: " + out_dir + "/graph/" + String.valueOf(i) + ".gseg");
             new File(out_dir + "/tmp/" + String.valueOf(i) + ".bin").delete();
         }
+    }
+
+    public static Graph loadFromSegment(String root_dir, int number) throws IOException {
+        Graph g = new Graph();
+        byte[] bb = Files.toByteArray(new File(root_dir + "/graph/" + String.valueOf(number) + ".gseg"));
+        ByteBuffer buffer = ByteBuffer.wrap(bb);
+        while (buffer.hasRemaining()) {
+            long src = buffer.getLong();
+            int count = buffer.getInt();
+            g.vertex_set.add(src);
+            long[] array = new long[count];
+            for (int i = 0; i < count; i++)
+                array[i] = buffer.getLong();
+            g.adjArray.put(src, array);
+        }
+        g.vertices = g.vertex_set.toArray();
+        Arrays.sort(g.vertices);
+        return g;
     }
 
 }

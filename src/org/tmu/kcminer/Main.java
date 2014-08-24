@@ -73,8 +73,7 @@ public class Main {
             }
         } else {
             System.out.println("Using 64bit ids.");
-            Graph graph = new Graph();
-            graph.loadFromEdgeListFile(input_path);
+            Graph graph = Graph.buildFromEdgeListFile(input_path);
             System.out.printf("Graph loaded in %s.\n", stopwatch.toString());
             System.out.println(graph.getInfo());
             stopwatch.reset().start();

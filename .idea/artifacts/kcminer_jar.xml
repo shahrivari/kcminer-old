@@ -5,6 +5,7 @@
       <element id="module-output" name="kcminer" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/hppc-0.6.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-cli-1.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/lz4-1.2.0.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

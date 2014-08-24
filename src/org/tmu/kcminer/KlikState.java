@@ -5,6 +5,7 @@ import com.carrotsearch.hppc.cursors.LongCursor;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -18,6 +19,7 @@ public class KlikState {
     long[] subgraph;
     LongArrayList extension;
     LongArrayList tabu;
+    long w;
 
     static private FileWriter writer = null;
     final static private ReentrantLock lock = new ReentrantLock();
@@ -35,7 +37,51 @@ public class KlikState {
                 extension.buffer[extension.elementsCount++] = n;
     }
 
-    public KlikState() {
+    private KlikState() {
+    }
+
+    public byte[] toBytes() {
+        ByteBuffer bb = ByteBuffer.allocate(3 * Integer.SIZE + subgraph.length * Long.SIZE + extension.elementsCount * Long.SIZE + tabu.elementsCount * Long.SIZE + Long.SIZE);
+        bb.putInt(subgraph.length);
+        for (long x : subgraph)
+            bb.putLong(x);
+        bb.putInt(extension.elementsCount);
+        for (LongCursor x : extension)
+            bb.putLong(x.value);
+        if (tabu != null) {
+            bb.putInt(tabu.elementsCount);
+            for (LongCursor x : tabu)
+                bb.putLong(x.value);
+        } else
+            bb.putInt(0);
+        bb.putLong(w);
+        return bb.array();
+    }
+
+    public static KlikState fromBytes(byte[] bytes) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        KlikState state = new KlikState();
+        int count;
+        count = bb.getInt();
+        state.subgraph = new long[count];
+        for (int i = 0; i < count; i++)
+            state.subgraph[i] = bb.getLong();
+
+        count = bb.getInt();
+        state.extension = new LongArrayList(count);
+        for (int i = 0; i < count; i++)
+            state.extension.buffer[i] = bb.getLong();
+        state.extension.elementsCount = count;
+
+        count = bb.getInt();
+        state.tabu = new LongArrayList(count);
+        for (int i = 0; i < count; i++)
+            state.tabu.buffer[i] = bb.getLong();
+        state.tabu.elementsCount = count;
+
+        state.w = bb.getLong();
+
+        return state;
     }
 
     public String toString() {
