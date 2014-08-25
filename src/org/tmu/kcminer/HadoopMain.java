@@ -5,24 +5,22 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.tmu.kcminer.hadoop.GraphLayer;
+import org.tmu.kcminer.hadoop.LongArrayWritable;
+import org.tmu.kcminer.hadoop.OneKlik;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Arrays;
-import java.util.HashSet;
 
 /**
  * Created by Saeed on 8/24/14.
@@ -96,8 +94,8 @@ public class HadoopMain extends Configured implements Tool {
 
         Job job = new Job(conf, WORK_DIR);
         job.setJarByClass(HadoopMain.class);
-        job.setMapperClass(GraphLayerMap.class);
-        job.setReducerClass(GraphLayerReduce.class);
+        job.setMapperClass(GraphLayer.Map.class);
+        job.setReducerClass(GraphLayer.Reduce.class);
         job.setMapOutputKeyClass(LongWritable.class);
         job.setMapOutputValueClass(LongWritable.class);
         job.setOutputKeyClass(LongWritable.class);
@@ -115,73 +113,33 @@ public class HadoopMain extends Configured implements Tool {
         System.out.println("Set Reduce tasks to " + nReduces);
         job.setNumReduceTasks(nReduces);
 
-
-        int result = job.waitForCompletion(true) ? 0 : 1;
+        job.waitForCompletion(true);
         System.out.printf("Took %s.\n", stopwatch);
+
+        Job job2 = new Job(conf, WORK_DIR);
+        job2.setJarByClass(HadoopMain.class);
+        job2.setMapperClass(OneKlik.Map.class);
+        job2.setMapOutputKeyClass(LongWritable.class);
+        job2.setMapOutputValueClass(LongArrayWritable.class);
+        job2.setNumReduceTasks(0);
+        job2.getConfiguration().set("working_dir", WORK_DIR);
+        job2.getConfiguration().set("mapred.output.compress", "true");
+        job2.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
+        job2.getConfiguration().set("mapred.compress.map.output", "true");
+        job2.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.GzipCodec");
+        job2.getConfiguration().set("mapred.task.timeout", "36000000");
+        FileInputFormat.addInputPath(job2, new Path(WORK_DIR + "/graph"));
+        job2.setInputFormatClass(SequenceFileInputFormat.class);
+        job2.setOutputFormatClass(SequenceFileOutputFormat.class);
+        FileOutputFormat.setOutputPath(job2, new Path(WORK_DIR + "/1"));
+        System.out.println("Set Reduce tasks to " + nReduces);
+        job2.setNumReduceTasks(nReduces);
+
+        int result = job2.waitForCompletion(true) ? 0 : 1;
+        System.out.printf("Took %s.\n", stopwatch);
+
         return result;
 
-    }
-
-    public static class GraphLayerMap extends Mapper<LongWritable, Text, LongWritable, LongWritable> {
-        LongWritable src = new LongWritable();
-        LongWritable dest = new LongWritable();
-
-        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            String line = value.toString();
-            if (line.startsWith("#"))
-                return;
-            String[] tokens = line.split("\\s+");
-            if (tokens.length < 2) {
-                return;
-            }
-            src.set(Long.parseLong(tokens[0]));
-            dest.set(Long.parseLong(tokens[1]));
-            context.write(src, dest);
-            context.write(dest, src);
-        }
-    }
-
-    public static class LongArrayWritable extends ArrayWritable {
-        public LongArrayWritable() {
-            super(LongWritable.class);
-        }
-    }
-
-    public static class GraphLayerReduce extends Reducer<LongWritable, LongWritable, LongWritable, LongArrayWritable> {
-        public void reduce(LongWritable key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
-            HashSet<LongWritable> set = new HashSet<LongWritable>();
-            for (LongWritable l : values) {
-                set.add(l);
-                context.getCounter("Graph", "#Edges_vis").increment(1);
-            }
-            context.getCounter("Graph", "#Nodes").increment(1);
-            context.getCounter("Graph", "#Edges").increment(set.size());
-            LongArrayWritable val = new LongArrayWritable();
-            LongWritable[] array = set.toArray(new LongWritable[set.size()]);
-            Arrays.sort(array);
-            val.set(array);
-            context.write(key, val);
-
-//            LongOpenHashSet set = new LongOpenHashSet();
-//            for (LongWritable l : values)
-//                set.add(l.get());
-//            long[] arr = set.toArray();
-//            Arrays.sort(arr);
-//            ByteBuffer bb=ByteBuffer.allocate(8*arr.length+1);
-//            bb.asLongBuffer().put(arr);
-//            bb.put((byte)1);
-//            context.getCounter("Graph","#Nodes").increment(1);
-//            context.getCounter("Graph","#Edges").increment(set.size());
-//            context.write(key,new BytesWritable(bb.array()));
-
-//            LongWritable[] array = new LongWritable[set.size()];
-//            int i = 0;
-//            for (LongCursor x : set)
-//                array[i++] = new LongWritable(x.value);
-//            LongArrayWritable warr = new LongArrayWritable();
-//            warr.set(array);
-//            context.write(key, warr);
-        }
     }
 
     public static void main(String[] args) throws Exception {

@@ -27,7 +27,7 @@ public class DiskKlik {
             Graph g = Graph.loadFromSegment(root_dir, segment);
             for (long v : g.vertices) {
                 KlikState state = new KlikState(v, g.getNeighbors(v));
-                byte[] bytes = state.toBytesZeroTerminated();
+                byte[] bytes = state.toBytes();
                 int bucket = Util.longToBucket(v, segments);
                 ostreams[bucket].writeInt(bytes.length);
                 ostreams[bucket].write(bytes);
@@ -44,7 +44,7 @@ public class DiskKlik {
                 byte[] bytes = new byte[count];
                 inputStream.read(bytes);
                 KlikState state = KlikState.fromBytes(bytes);
-                KlikState new_state = state.expandFixed(state.w, g.getNeighbors(state.w));
+                //KlikState new_state = state.expandFixed(state.w, g.getNeighbors(state.w));
 
             }
 

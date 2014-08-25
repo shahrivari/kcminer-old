@@ -19,7 +19,6 @@ public class KlikState {
     long[] subgraph;
     LongArrayList extension;
     LongArrayList tabu;
-    long w;
 
     static private FileWriter writer = null;
     final static private ReentrantLock lock = new ReentrantLock();
@@ -40,8 +39,45 @@ public class KlikState {
     private KlikState() {
     }
 
-    public byte[] toBytesZeroTerminated() {
-        ByteBuffer bb = ByteBuffer.allocate(3 * Integer.SIZE + subgraph.length * Long.SIZE + extension.elementsCount * Long.SIZE + tabu.elementsCount * Long.SIZE + Long.SIZE + 1);
+    public long[] toLongs() {
+        long[] array = new long[subgraph.length + extension.size() + tabu.size() + 3];
+        int index = 0;
+
+        array[index++] = subgraph.length;
+        for (long x : subgraph)
+            array[index++] = x;
+
+        array[index++] = extension.size();
+        for (LongCursor x : extension)
+            array[index++] = x.value;
+
+        array[index++] = tabu.size();
+        for (LongCursor x : tabu)
+            array[index++] = x.value;
+        return array;
+    }
+
+    public static KlikState fromLongs(long[] array) {
+        int index = 0;
+        KlikState state = new KlikState();
+        int count = (int) array[index++];
+        state.subgraph = Arrays.copyOfRange(array, index, index + count);
+        index += count;
+
+        count = (int) array[index++];
+        state.extension.buffer = Arrays.copyOfRange(array, index, index + count);
+        state.extension.elementsCount = count;
+        index += count;
+
+        count = (int) array[index++];
+        state.tabu.buffer = Arrays.copyOfRange(array, index, index + count);
+        state.tabu.elementsCount = count;
+
+        return state;
+    }
+
+    public byte[] toBytes() {
+        ByteBuffer bb = ByteBuffer.allocate(3 * Integer.SIZE + subgraph.length * Long.SIZE + extension.elementsCount * Long.SIZE + tabu.elementsCount * Long.SIZE + Long.SIZE);
         bb.putInt(subgraph.length);
         for (long x : subgraph)
             bb.putLong(x);
@@ -54,8 +90,6 @@ public class KlikState {
                 bb.putLong(x.value);
         } else
             bb.putInt(0);
-        bb.putLong(w);
-        bb.put((byte) 0);
         return bb.array();
     }
 
@@ -80,7 +114,6 @@ public class KlikState {
             state.tabu.buffer[i] = bb.getLong();
         state.tabu.elementsCount = count;
 
-        state.w = bb.getLong();
 
         return state;
     }

@@ -9,7 +9,7 @@ public class Test {
     public static void main(String[] args) throws IOException {
         int segments = 16;
         KlikState state = new KlikState(123, new long[]{1, 2, 3, 4, 5});
-        byte[] bb = state.toBytesZeroTerminated();
+        byte[] bb = state.toBytes();
         KlikState state1 = KlikState.fromBytes(bb);
         Stopwatch stopwatch = new Stopwatch().start();
         Graph.layEdgeListToDisk("X:\\networks\\twitter_combined.txt", "x:\\lay", segments);
