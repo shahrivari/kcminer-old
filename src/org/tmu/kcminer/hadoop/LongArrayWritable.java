@@ -28,7 +28,8 @@ public class LongArrayWritable implements Writable {
         StringBuilder builder = new StringBuilder();
         for (long l : array)
             builder.append(l).append("\t");
-        builder.setLength(builder.length() - 1);
+        //builder.setLength(builder.length() - 1);
+        builder.append("T:").append(termination);
         return builder.toString();
     }
 

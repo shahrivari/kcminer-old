@@ -13,7 +13,7 @@ import java.util.Arrays;
  * Created by Saeed on 8/25/14.
  */
 public class GraphLayer {
-    public static final byte termination = (byte) 1;
+    public static final int termination = 0;
 
     public static class Map extends Mapper<LongWritable, Text, LongWritable, LongWritable> {
         LongWritable src = new LongWritable();

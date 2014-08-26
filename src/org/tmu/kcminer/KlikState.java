@@ -16,9 +16,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * Created by Saeed on 8/8/14.
  */
 public class KlikState {
-    long[] subgraph;
-    LongArrayList extension;
-    LongArrayList tabu;
+    public long[] subgraph;
+    public LongArrayList extension;
+    public LongArrayList tabu;
 
     static private FileWriter writer = null;
     final static private ReentrantLock lock = new ReentrantLock();
@@ -40,7 +40,8 @@ public class KlikState {
     }
 
     public long[] toLongs() {
-        long[] array = new long[subgraph.length + extension.size() + tabu.size() + 3];
+        int tabu_size = tabu != null ? tabu.size() : 0;
+        long[] array = new long[subgraph.length + extension.size() + tabu_size + 3];
         int index = 0;
 
         array[index++] = subgraph.length;
@@ -51,9 +52,10 @@ public class KlikState {
         for (LongCursor x : extension)
             array[index++] = x.value;
 
-        array[index++] = tabu.size();
-        for (LongCursor x : tabu)
-            array[index++] = x.value;
+        array[index++] = tabu_size;
+        if (tabu_size > 0)
+            for (LongCursor x : tabu)
+                array[index++] = x.value;
         return array;
     }
 
@@ -65,11 +67,13 @@ public class KlikState {
         index += count;
 
         count = (int) array[index++];
+        state.extension = new LongArrayList(count);
         state.extension.buffer = Arrays.copyOfRange(array, index, index + count);
         state.extension.elementsCount = count;
         index += count;
 
         count = (int) array[index++];
+        state.tabu = new LongArrayList(count);
         state.tabu.buffer = Arrays.copyOfRange(array, index, index + count);
         state.tabu.elementsCount = count;
 

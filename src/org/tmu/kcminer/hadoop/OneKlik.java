@@ -14,7 +14,7 @@ public class OneKlik {
         public void map(LongWritable key, LongArrayWritable value, Context context) throws IOException, InterruptedException {
             KlikState state = new KlikState(key.get(), value.array);
             long[] array = state.toLongs();
-            context.write(key, new LongArrayWritable(array, 1));
+            context.write(key, new LongArrayWritable(array, KlikMR.termination));
         }
 
     }
