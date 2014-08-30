@@ -112,6 +112,7 @@ public class HadoopMain extends Configured implements Tool {
         job.setMapOutputValueClass(LongWritable.class);
         job.setOutputKeyClass(LongWritable.class);
         job.setOutputValueClass(LongArrayWritable.class);
+        job.setPartitionerClass(RandomLongPartitioner.class);
         job.getConfiguration().set("working_dir", WORK_DIR);
         job.getConfiguration().set("mapred.output.compress", "true");
         job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
@@ -160,6 +161,7 @@ public class HadoopMain extends Configured implements Tool {
             job.setMapOutputValueClass(LongArrayWritable.class);
             job.setOutputKeyClass(LongWritable.class);
             job.setOutputValueClass(LongArrayWritable.class);
+            job.setPartitionerClass(RandomLongPartitioner.class);
             job.getConfiguration().set("working_dir", WORK_DIR);
             job.getConfiguration().set("clique_size", Integer.toString(cliqueSize));
             job.getConfiguration().set("mapred.output.compress", "true");
