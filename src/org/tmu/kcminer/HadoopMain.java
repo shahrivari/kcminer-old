@@ -114,20 +114,22 @@ public class HadoopMain extends Configured implements Tool {
         job.setOutputValueClass(LongArrayWritable.class);
         job.setPartitionerClass(RandomLongPartitioner.class);
         job.getConfiguration().set("working_dir", WORK_DIR);
-        job.getConfiguration().set("mapred.output.compress", "true");
+        job.getConfiguration().set("mapred.output.compress", "false");
         job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
-        job.getConfiguration().set("mapred.compress.map.output", "true");
+        job.getConfiguration().set("mapred.compress.map.output", "false");
         job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.task.timeout", "36000000");
         FileInputFormat.addInputPath(job, input_path);
         job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputFormatClass(SequenceFileOutputFormat.class);
+        job.setOutputFormatClass(TextOutputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/graph"));
         System.out.println("Set Reduce tasks to " + nReduces);
         job.setNumReduceTasks(nReduces);
 
         job.waitForCompletion(true);
         System.out.printf("Took %s.\n", stopwatch);
+
+        System.exit(0);
 
         job = new Job(getConf(), "Dist");
         job.setJarByClass(HadoopMain.class);
