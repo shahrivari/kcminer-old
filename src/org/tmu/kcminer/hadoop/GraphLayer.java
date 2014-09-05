@@ -1,11 +1,13 @@
 package org.tmu.kcminer.hadoop;
 
+import com.carrotsearch.hppc.LongOpenHashSet;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Created by Saeed on 8/25/14.
@@ -34,18 +36,17 @@ public class GraphLayer {
 
     public static class Reduce extends Reducer<LongWritable, LongWritable, LongWritable, LongArrayWritable> {
         public void reduce(LongWritable key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
-            context.write(key, new LongArrayWritable(new long[0], 0));
-//            LongOpenHashSet set = LongOpenHashSet.newInstance();
-//            for (LongWritable l : values) {
-//                set.add(l.get());
-//                context.getCounter("Graph", "2x#DirectedEdges").increment(1);
-//            }
-//            context.getCounter("Graph", "#Nodes").increment(1);
-//            context.getCounter("Graph", "2x#Edges").increment(set.size());
-//            long[] array = set.toArray();
-//            System.out.println(Arrays.toString(array));
-//            Arrays.sort(array);
-//            context.write(key, new LongArrayWritable(array, 0));
+            LongOpenHashSet set = LongOpenHashSet.newInstance();
+            for (LongWritable l : values) {
+                set.add(l.get());
+                context.getCounter("Graph", "2x#DirectedEdges").increment(1);
+            }
+            context.getCounter("Graph", "#Nodes").increment(1);
+            context.getCounter("Graph", "2x#Edges").increment(set.size());
+            long[] array = set.toArray();
+            System.out.println(Arrays.toString(array));
+            Arrays.sort(array);
+            context.write(key, new LongArrayWritable(array, 0));
         }
     }
 

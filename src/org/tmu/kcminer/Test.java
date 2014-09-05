@@ -12,6 +12,7 @@ import java.util.Set;
  */
 public class Test {
     public static void main(String[] args) throws IOException {
+        int x = Util.longToBucket(241, 90);
         int segments = 16;
         Stopwatch stopwatch = new Stopwatch().start();
         Graph g = Graph.buildFromEdgeListFile("X:\\networks\\slash.txt");
