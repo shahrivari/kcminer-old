@@ -112,13 +112,14 @@ public class HadoopMain extends Configured implements Tool {
         job.setMapOutputValueClass(LongWritable.class);
         job.setOutputKeyClass(LongWritable.class);
         job.setOutputValueClass(LongArrayWritable.class);
-        //job.setPartitionerClass(RandomLongPartitioner.class);
+        job.setPartitionerClass(RandomLongPartitioner.class);
         job.getConfiguration().set("working_dir", WORK_DIR);
-        job.getConfiguration().set("mapred.output.compress", "false");
-        job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
-        job.getConfiguration().set("mapred.compress.map.output", "false");
+        job.getConfiguration().set("mapred.output.compress", "true");
+        job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.SnappyCodec");
+        job.getConfiguration().set("mapred.compress.map.output", "true");
         job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.task.timeout", "36000000");
+        job.getConfiguration().set("mapred.max.split.size", "524288");
         FileInputFormat.addInputPath(job, input_path);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
