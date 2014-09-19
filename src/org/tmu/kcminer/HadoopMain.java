@@ -130,31 +130,31 @@ public class HadoopMain extends Configured implements Tool {
         job.waitForCompletion(true);
         System.out.printf("Took %s.\n", stopwatch);
 
-        //System.exit(0);
-
-        job = new Job(getConf(), "Dist");
-        job.setJarByClass(HadoopMain.class);
-        job.setMapperClass(Distribute.Map.class);
-        job.setMapOutputKeyClass(LongWritable.class);
-        job.setMapOutputValueClass(LongArrayWritable.class);
-        job.setNumReduceTasks(0);
-        job.getConfiguration().set("mapred.output.compress", "true");
-        job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
-        job.getConfiguration().set("mapred.compress.map.output", "true");
-        job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
-        job.getConfiguration().set("mapred.task.timeout", "36000000");
-        FileInputFormat.addInputPath(job, new Path(WORK_DIR + "/graph"));
-        job.setInputFormatClass(SequenceFileInputFormat.class);
-        job.setOutputFormatClass(SequenceFileOutputFormat.class);
-        job.setOutputKeyClass(LongWritable.class);
-        job.setOutputValueClass(LongArrayWritable.class);
-        FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/d"));
-
-        job.waitForCompletion(true);
-        System.out.printf("Took %s.\n", stopwatch);
-
-
-        System.exit(0);
+//        //System.exit(0);
+//
+//        job = new Job(getConf(), "Dist");
+//        job.setJarByClass(HadoopMain.class);
+//        job.setMapperClass(Distribute.Map.class);
+//        job.setMapOutputKeyClass(LongWritable.class);
+//        job.setMapOutputValueClass(LongArrayWritable.class);
+//        job.setNumReduceTasks(0);
+//        job.getConfiguration().set("mapred.output.compress", "true");
+//        job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
+//        job.getConfiguration().set("mapred.compress.map.output", "true");
+//        job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
+//        job.getConfiguration().set("mapred.task.timeout", "36000000");
+//        FileInputFormat.addInputPath(job, new Path(WORK_DIR + "/graph"));
+//        job.setInputFormatClass(SequenceFileInputFormat.class);
+//        job.setOutputFormatClass(SequenceFileOutputFormat.class);
+//        job.setOutputKeyClass(LongWritable.class);
+//        job.setOutputValueClass(LongArrayWritable.class);
+//        FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/d"));
+//
+//        job.waitForCompletion(true);
+//        System.out.printf("Took %s.\n", stopwatch);
+//
+//
+//        System.exit(0);
 
         job = new Job(getConf(), "OneCliques");
         job.setJarByClass(HadoopMain.class);
