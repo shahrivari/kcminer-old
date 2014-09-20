@@ -89,7 +89,8 @@ public class Graph {
         int size = 0;
         for (long v : vertices)
             size += 2 + getNeighbors(v).length;
-        ByteBuffer bb = ByteBuffer.allocate(size * Long.SIZE);
+        ByteBuffer bb = ByteBuffer.allocate(size * Long.SIZE + 1);
+        bb.putLong(vertices.length);
 
         for (long v : vertices) {
             bb.putLong(v);
@@ -100,7 +101,15 @@ public class Graph {
     }
 
     public static Graph fromBytes(byte[] bytes) {
+        LongBuffer lb = ByteBuffer.wrap(bytes).asLongBuffer();
+        int size = (int) lb.get();
+        Graph g = new Graph();
+        for (int i = 0; i < size; i++) {
+
+        }
+
         return null;
+
     }
 
     public static void layEdgeListToDisk(String in_path, String out_dir, int bucket_count) throws IOException {
