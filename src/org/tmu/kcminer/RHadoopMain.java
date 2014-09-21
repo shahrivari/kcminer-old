@@ -2,20 +2,19 @@ package org.tmu.kcminer;
 
 import org.apache.commons.cli.*;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.SequenceFile;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.tmu.kcminer.hadoop.GraphLayer;
-import org.tmu.kcminer.hadoop.LongArrayWritable;
-import org.tmu.kcminer.hadoop.RandomLongPartitioner;
+import org.tmu.kcminer.hadoop.RMiner;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -62,7 +61,7 @@ public class RHadoopMain extends Configured implements Tool {
             System.exit(-1);
         }
         if (commandLine.hasOption("nm")) {
-            nMaps = Integer.parseInt(commandLine.getOptionValue("nr"));
+            nMaps = Integer.parseInt(commandLine.getOptionValue("nm"));
             if (nMaps < 1) {
                 System.out.println("Number of map tasks must be greater or equal to 1.");
                 System.exit(-1);
@@ -102,33 +101,35 @@ public class RHadoopMain extends Configured implements Tool {
                 fs.delete(new Path(WORK_DIR), true);
 
         }
-        if (!fs.mkdirs(new Path(WORK_DIR))) {
-            throw new IOException("Cannot create input directory " + WORK_DIR);
-        }
+        if (!fs.mkdirs(new Path(WORK_DIR)))
+            throw new IOException("Cannot create WORK directory " + WORK_DIR);
 
+        if (!fs.mkdirs(new Path(WORK_DIR + "/chunks")))
+            throw new IOException("Cannot create chunks directory " + WORK_DIR);
+
+
+        System.out.println("Loading graph!");
         Graph graph = Graph.buildFromEdgeListFile(input_path);
-        List<List<Long>> chunks = new ArrayList<List<Long>>(nMaps);
+        FSDataOutputStream graph_file = fs.create(new Path(WORK_DIR + "/graph"), true);
+        graph.writeToStream(graph_file);
+        System.out.println("Graph written to HDFS!");
+
+        List<StringBuilder> chunks = new ArrayList<StringBuilder>(nMaps);
         for (int i = 0; i < nMaps; i++)
-            chunks.add(new ArrayList<Long>());
+            chunks.add(new StringBuilder());
 
         int list_i = 0;
         for (long l : graph.vertices) {
-            chunks.get(list_i).add(l);
+            chunks.get(list_i).append(l + "\n");
             list_i = (list_i + 1) % nMaps;
         }
 
         System.out.print("Writing input for Map #:");
         for (int i = 0; i < chunks.size(); ++i) {
-            final Path file = new Path("", "part" + i);
-            final SequenceFile.Writer writer = SequenceFile.createWriter(
-                    fs, getConf(), file,
-                    LongWritable.class, NullWritable.class);
-            try {
-                for (Long l : chunks.get(i))
-                    writer.append(new LongWritable(l), NullWritable.get());
-            } finally {
-                writer.close();
-            }
+            final Path file = new Path(WORK_DIR + "/chunks/part" + i);
+            FSDataOutputStream chunk_file = fs.create(file, true);
+            chunk_file.writeChars(chunks.get(i).toString());
+            chunk_file.close();
             if (i % 50 != 0)
                 System.out.print(".");
             else
@@ -136,29 +137,28 @@ public class RHadoopMain extends Configured implements Tool {
         }
         System.out.println(nMaps + ".");
 
-
         Job job = new Job(getConf(), "GraphInit");
         job.setJarByClass(RHadoopMain.class);
-        job.setMapperClass(GraphLayer.Map.class);
-        job.setReducerClass(GraphLayer.Reduce.class);
-        job.setMapOutputKeyClass(LongWritable.class);
-        job.setMapOutputValueClass(LongWritable.class);
-        job.setOutputKeyClass(LongWritable.class);
-        job.setOutputValueClass(LongArrayWritable.class);
-        job.setPartitionerClass(RandomLongPartitioner.class);
+        job.setMapperClass(RMiner.Map.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(NullWritable.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(NullWritable.class);
+        //job.setPartitionerClass(RandomLongPartitioner.class);
         job.getConfiguration().set("working_dir", WORK_DIR);
+        job.getConfiguration().set("graph_path", WORK_DIR + "/graph");
+        job.getConfiguration().setInt("graph_path", cliqueSize);
         job.getConfiguration().set("mapred.output.compress", "true");
         job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.compress.map.output", "true");
         job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.task.timeout", "36000000");
         job.getConfiguration().set("mapred.max.split.size", "524288");
-        //FileInputFormat.addInputPath(job, input_path);
+        FileInputFormat.addInputPath(job, new Path(WORK_DIR + "/chunks"));
         job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputFormatClass(SequenceFileOutputFormat.class);
-        FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/graph"));
-        System.out.println("Set Reduce tasks to " + nMaps);
-        job.setNumReduceTasks(nMaps);
+        job.setOutputFormatClass(TextOutputFormat.class);
+        FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/output"));
+        job.setNumReduceTasks(0);
 
         job.waitForCompletion(true);
         System.out.printf("Took %s.\n", stopwatch);

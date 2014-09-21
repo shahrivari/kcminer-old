@@ -4,6 +4,8 @@ import com.carrotsearch.hppc.LongObjectOpenHashMap;
 import com.carrotsearch.hppc.LongOpenHashSet;
 import com.carrotsearch.hppc.cursors.LongObjectCursor;
 import com.google.common.io.Files;
+import net.jpountz.lz4.LZ4BlockInputStream;
+import net.jpountz.lz4.LZ4BlockOutputStream;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -84,32 +86,48 @@ public class Graph {
         return info;
     }
 
-
-    public byte[] toBytes() {
-        int size = 0;
-        for (long v : vertices)
-            size += 2 + getNeighbors(v).length;
-        ByteBuffer bb = ByteBuffer.allocate(size * Long.SIZE + 1);
-        bb.putLong(vertices.length);
-
+    public void writeToStream(OutputStream ostream) throws IOException {
+        LZ4BlockOutputStream lzs = new LZ4BlockOutputStream(ostream);
+        DataOutputStream dstream = new DataOutputStream(lzs);
+        dstream.writeInt(vertices.length);
         for (long v : vertices) {
-            bb.putLong(v);
-            bb.putLong(getNeighbors(v).length);
-            bb.asLongBuffer().put(getNeighbors(v));
+            dstream.writeLong(v);
+            dstream.writeInt(getNeighbors(v).length);
+            for (long l : getNeighbors(v))
+                dstream.writeLong(l);
         }
-        return bb.array();
+        dstream.close();
+        lzs.close();
+        ostream.flush();
     }
 
-    public static Graph fromBytes(byte[] bytes) {
-        LongBuffer lb = ByteBuffer.wrap(bytes).asLongBuffer();
-        int size = (int) lb.get();
+    public static Graph readFromStream(InputStream istream) throws IOException {
+        LZ4BlockInputStream lzs = new LZ4BlockInputStream(istream);
+        DataInputStream stream = new DataInputStream(lzs);
+        int size = stream.readInt();//(int) lb.get();
         Graph g = new Graph();
         for (int i = 0; i < size; i++) {
-
+            long v = stream.readLong();//lb.get();
+            g.vertex_set.add(v);
+            long[] arr = new long[stream.readInt()];
+            for (int x = 0; x < arr.length; x++)
+                arr[x] = stream.readLong();
+            g.adjArray.put(v, arr);
         }
+        g.vertices = g.vertex_set.toArray();
+        return g;
+    }
 
-        return null;
+    public byte[] toBytes() throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(1024 * 1024);
+        writeToStream(bos);
+        bos.close();
+        return bos.toByteArray();
+    }
 
+    public static Graph fromBytes(byte[] bytes) throws IOException {
+        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+        return readFromStream(bis);
     }
 
     public static void layEdgeListToDisk(String in_path, String out_dir, int bucket_count) throws IOException {
