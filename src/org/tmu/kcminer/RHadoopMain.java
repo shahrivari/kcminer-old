@@ -19,6 +19,7 @@ import org.tmu.kcminer.hadoop.RMiner;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -129,7 +130,10 @@ public class RHadoopMain extends Configured implements Tool {
         for (int i = 0; i < chunks.size(); ++i) {
             final Path file = new Path(WORK_DIR + "/chunks/part" + i);
             FSDataOutputStream chunk_file = fs.create(file, true);
-            chunk_file.writeChars(chunks.get(i).toString());
+            PrintWriter writer = new PrintWriter(chunk_file);
+            writer.write(chunks.get(i).toString());
+            //chunk_file.writeChars(chunks.get(i).toString());
+            writer.close();
             chunk_file.close();
             if (i % 50 != 0)
                 System.out.print(".");
