@@ -5,5 +5,5 @@ package org.tmu.kcminer.hadoop;
  */
 public enum Counters {
     GraphNodes,
-    GraphLoads
+    Exception, GraphLoads
 }

@@ -122,6 +122,7 @@ public class RHadoopMain extends Configured implements Tool {
         for (long l : graph.vertices) {
             chunks.get(list_i).append(l + "\n");
             list_i = (list_i + 1) % nMaps;
+            new KlikState(l, graph.getNeighbors(l));
         }
 
         System.out.print("Writing input for Map #:");
@@ -147,10 +148,10 @@ public class RHadoopMain extends Configured implements Tool {
         //job.setPartitionerClass(RandomLongPartitioner.class);
         job.getConfiguration().set("working_dir", WORK_DIR);
         job.getConfiguration().set("graph_path", WORK_DIR + "/graph");
-        job.getConfiguration().setInt("graph_path", cliqueSize);
-        job.getConfiguration().set("mapred.output.compress", "true");
+        job.getConfiguration().setInt("k", cliqueSize);
+        job.getConfiguration().set("mapred.output.compress", "false");
         job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.SnappyCodec");
-        job.getConfiguration().set("mapred.compress.map.output", "true");
+        job.getConfiguration().set("mapred.compress.map.output", "false");
         job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.task.timeout", "36000000");
         job.getConfiguration().set("mapred.max.split.size", "524288");
