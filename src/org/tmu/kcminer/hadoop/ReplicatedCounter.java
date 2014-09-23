@@ -16,7 +16,7 @@ import java.util.Stack;
 /**
  * Created by Saeed on 9/21/14.
  */
-public class RMiner {
+public class ReplicatedCounter {
     public static class Map extends Mapper<LongWritable, Text, Text, NullWritable> {
         Graph graph = null;
         int k = 0;
@@ -33,9 +33,10 @@ public class RMiner {
             }
             if (k == 0) {
                 k = context.getConfiguration().getInt("k", 0);
-                lower = k;
+                lower = context.getConfiguration().getInt("lower", 0);
             }
-            if (k == 0)
+            maximal = context.getConfiguration().getBoolean("maximal", false);
+            if (k == 0 || lower == 0)
                 throw new IllegalArgumentException("Bad clique size!");
         }
 
@@ -50,22 +51,11 @@ public class RMiner {
                 StringBuilder builder = new StringBuilder();
                 while (!stack.isEmpty()) {
                     KlikState state = stack.pop();
-                    if (builder.length() > 1024 * 1024) {
-                        context.write(new Text(builder.toString()), NullWritable.get());
-                        builder.setLength(0);
-                    }
-                    if (state.subgraph.length == k - 1) {
-                        counts[k] += state.extension.elementsCount;
-                        for (LongCursor cursor : state.extension)
-                            builder.append(KlikState.cliqueToString(state.getClique(cursor.value))).append("\n");
-                    }
                     if (state.subgraph.length >= lower) {
-                        counts[state.subgraph.length]++;
                         if (!maximal)
-                            builder.append(KlikState.cliqueToString(state.subgraph)).append("\n");
+                            counts[state.subgraph.length]++;
                         else if (state.extension.isEmpty() && state.tabu.isEmpty())
-                            builder.append(KlikState.cliqueToString(state.subgraph)).append("\n");
-
+                            counts[state.subgraph.length]++;
                     }
                     if (state.subgraph.length == k - 1)
                         continue;
@@ -80,17 +70,17 @@ public class RMiner {
                             stack.add(new_state);
                     }
                 }
-                context.write(new Text(builder.toString()), NullWritable.get());
                 for (int i = 0; i < counts.length; i++)
-                    if (counts[i] > 0)
+                    if (counts[i] > 0) {
                         context.getCounter("Cliques", Integer.toString(i)).increment(counts[i]);
+                        context.getCounter("Cliques", "ALL").increment(counts[i]);
+                    }
             } catch (Exception exp) {
                 context.getCounter(Counters.Exception).increment(1);
                 System.out.println("Node" + value.toString());
                 exp.printStackTrace();
             }
         }
-
     }
 
 }

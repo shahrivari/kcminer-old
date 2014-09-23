@@ -1,4 +1,4 @@
-package org.tmu.kcminer;
+package org.tmu.kcminer.hadoop;
 
 import org.apache.commons.cli.*;
 import org.apache.hadoop.conf.Configured;
@@ -16,7 +16,9 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.tmu.kcminer.hadoop.*;
+import org.tmu.kcminer.KlikState;
+import org.tmu.kcminer.Main;
+import org.tmu.kcminer.Stopwatch;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -130,31 +132,6 @@ public class HadoopMain extends Configured implements Tool {
         job.waitForCompletion(true);
         System.out.printf("Took %s.\n", stopwatch);
 
-//        //System.exit(0);
-//
-//        job = new Job(getConf(), "Dist");
-//        job.setJarByClass(HadoopMain.class);
-//        job.setMapperClass(Distribute.Map.class);
-//        job.setMapOutputKeyClass(LongWritable.class);
-//        job.setMapOutputValueClass(LongArrayWritable.class);
-//        job.setNumReduceTasks(0);
-//        job.getConfiguration().set("mapred.output.compress", "true");
-//        job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
-//        job.getConfiguration().set("mapred.compress.map.output", "true");
-//        job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
-//        job.getConfiguration().set("mapred.task.timeout", "36000000");
-//        FileInputFormat.addInputPath(job, new Path(WORK_DIR + "/graph"));
-//        job.setInputFormatClass(SequenceFileInputFormat.class);
-//        job.setOutputFormatClass(SequenceFileOutputFormat.class);
-//        job.setOutputKeyClass(LongWritable.class);
-//        job.setOutputValueClass(LongArrayWritable.class);
-//        FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/d"));
-//
-//        job.waitForCompletion(true);
-//        System.out.printf("Took %s.\n", stopwatch);
-//
-//
-//        System.exit(0);
 
         job = new Job(getConf(), "OneCliques");
         job.setJarByClass(HadoopMain.class);
@@ -203,6 +180,7 @@ public class HadoopMain extends Configured implements Tool {
             FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/" + step));
             System.out.println("Set Reduce tasks to " + nReduces);
             job.setNumReduceTasks(nReduces);
+            System.out.println("Doing cliques of size: " + step);
 
             job.waitForCompletion(true);
             System.out.printf("Took %s.\n", stopwatch);
@@ -248,6 +226,7 @@ public class HadoopMain extends Configured implements Tool {
         options.addOption("i", "input", true, "the input graph's file name.");
         options.addOption("wd", true, "the working directory.");
         options.addOption("s", "size", true, "maximum size of clique to enumerate.");
+        options.addOption("hadoop", false, "Use Hadoop and distribute the graph.");
 
         parser = new BasicParser();
         commandLine = parser.parse(options, args);

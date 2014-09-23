@@ -1,10 +1,13 @@
 package org.tmu.kcminer;
 
 import org.apache.commons.cli.*;
+import org.tmu.kcminer.hadoop.HadoopMain;
+import org.tmu.kcminer.hadoop.ReplicatedHadoopMain;
 import org.tmu.kcminer.smp.IntGraph;
 import org.tmu.kcminer.smp.IntKlikState;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Created by Saeed on 8/1/14.
@@ -41,6 +44,39 @@ public class Main {
 
     private static void localMain() throws IOException, InterruptedException {
         stopwatch.reset().start();
+        if (commandLine.hasOption("s")) {
+            cliqueSize = Integer.parseInt(commandLine.getOptionValue("s"));
+            if (cliqueSize < 3) {
+                System.out.println("Size of clique must be greater or equal to 3.");
+                System.exit(-1);
+            }
+        } else {
+            System.out.println("Size of subgraphs must be given.");
+            formatter.printHelp(Main.class.toString(), options);
+            System.exit(-1);
+        }
+
+        if (commandLine.hasOption("l")) {
+            lowerBound = Integer.parseInt(commandLine.getOptionValue("l"));
+            if (lowerBound < 3) {
+                System.out.println("Size of clique must be greater or equal to 3.");
+                System.exit(-1);
+            }
+        } else
+            lowerBound = cliqueSize;
+
+
+        if (commandLine.hasOption("i")) {
+            input_path = commandLine.getOptionValue("i");
+        } else {
+            System.out.println("Input file must be given.");
+            formatter.printHelp(Main.class.toString(), options);
+            System.exit(-1);
+        }
+
+        if (commandLine.hasOption("o"))
+            output_path = commandLine.getOptionValue("o");
+
         if (commandLine.hasOption("t"))
             threadCount = Integer.parseInt(commandLine.getOptionValue("t"));
         System.out.println("Running locally.");
@@ -102,45 +138,15 @@ public class Main {
         System.exit(0);
     }
 
-    public static void main(String[] args) throws IOException, InterruptedException, ParseException {
-        initCLI(args);
-
-        if (commandLine.hasOption("s")) {
-            cliqueSize = Integer.parseInt(commandLine.getOptionValue("s"));
-            if (cliqueSize < 3) {
-                System.out.println("Size of clique must be greater or equal to 3.");
-                System.exit(-1);
-            }
-        } else {
-            System.out.println("Size of subgraphs must be given.");
-            formatter.printHelp(Main.class.toString(), options);
-            System.exit(-1);
-        }
-
-        if (commandLine.hasOption("l")) {
-            lowerBound = Integer.parseInt(commandLine.getOptionValue("l"));
-            if (lowerBound < 3) {
-                System.out.println("Size of clique must be greater or equal to 3.");
-                System.exit(-1);
-            }
-        } else
-            lowerBound = cliqueSize;
-
-
-        if (commandLine.hasOption("i")) {
-            input_path = commandLine.getOptionValue("i");
-        } else {
-            System.out.println("Input file must be given.");
-            formatter.printHelp(Main.class.toString(), options);
-            System.exit(-1);
-        }
-
-        if (commandLine.hasOption("o"))
-            output_path = commandLine.getOptionValue("o");
-
-        if (commandLine.hasOption("local")) {
+    public static void main(String[] args) throws Exception {
+        if (Arrays.asList(args).contains("-local")) {
+            initCLI(args);
             localMain();
-        } else {
+        } else if (Arrays.asList(args).contains("-rhadoop"))
+            ReplicatedHadoopMain.main(args);
+        else if (Arrays.asList(args).contains("-hadoop"))
+            HadoopMain.main(args);
+        else {
             System.out.println("Just runs locally now.");
             formatter.printHelp(Main.class.toString(), options);
             System.exit(-1);

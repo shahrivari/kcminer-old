@@ -1,4 +1,4 @@
-package org.tmu.kcminer;
+package org.tmu.kcminer.hadoop;
 
 import org.apache.commons.cli.*;
 import org.apache.hadoop.conf.Configured;
@@ -14,7 +14,10 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.tmu.kcminer.hadoop.RMiner;
+import org.tmu.kcminer.Graph;
+import org.tmu.kcminer.KlikState;
+import org.tmu.kcminer.Main;
+import org.tmu.kcminer.Stopwatch;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -26,7 +29,7 @@ import java.util.List;
 /**
  * Created by Saeed on 8/24/14.
  */
-public class RHadoopMain extends Configured implements Tool {
+public class ReplicatedHadoopMain extends Configured implements Tool {
     static private String WORK_DIR;
     static String input_path;
     static boolean verbose = false;
@@ -36,6 +39,7 @@ public class RHadoopMain extends Configured implements Tool {
     static HelpFormatter formatter = new HelpFormatter();
     static Options options = new Options();
     static int cliqueSize = 3;
+    static int lowerSize = 3;
 
     @Override
     public int run(String[] strings) throws Exception {
@@ -53,6 +57,17 @@ public class RHadoopMain extends Configured implements Tool {
             formatter.printHelp(Main.class.toString(), options);
             System.exit(-1);
         }
+
+        if (commandLine.hasOption("l")) {
+            lowerSize = Integer.parseInt(commandLine.getOptionValue("l"));
+            if (lowerSize < 3) {
+                System.out.println("Lower size of clique must be greater or equal to 3.");
+                System.exit(-1);
+            }
+        } else {
+            lowerSize = cliqueSize;
+        }
+
 
         if (commandLine.hasOption("i")) {
             input_path = commandLine.getOptionValue("i");
@@ -142,20 +157,25 @@ public class RHadoopMain extends Configured implements Tool {
         }
         System.out.println(nMaps + ".");
 
-        Job job = new Job(getConf(), "GraphInit");
-        job.setJarByClass(RHadoopMain.class);
-        job.setMapperClass(RMiner.Map.class);
+        Job job = new Job(getConf(), "KCMinerRep");
+        job.setJarByClass(ReplicatedHadoopMain.class);
+        if (commandLine.hasOption("c"))
+            job.setMapperClass(ReplicatedCounter.Map.class);
+        else
+            job.setMapperClass(ReplicatedMiner.Map.class);
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(NullWritable.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(NullWritable.class);
-        //job.setPartitionerClass(RandomLongPartitioner.class);
         job.getConfiguration().set("working_dir", WORK_DIR);
         job.getConfiguration().set("graph_path", WORK_DIR + "/graph");
         job.getConfiguration().setInt("k", cliqueSize);
-        job.getConfiguration().set("mapred.output.compress", "false");
+        job.getConfiguration().setInt("lower", lowerSize);
+        if (commandLine.hasOption("max"))
+            job.getConfiguration().setBoolean("maximal", true);
+        job.getConfiguration().set("mapred.output.compress", "true");
         job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.SnappyCodec");
-        job.getConfiguration().set("mapred.compress.map.output", "false");
+        job.getConfiguration().set("mapred.compress.map.output", "true");
         job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.task.timeout", "36000000");
         job.getConfiguration().set("mapred.max.split.size", "524288");
@@ -180,9 +200,13 @@ public class RHadoopMain extends Configured implements Tool {
         options.addOption("nm", "nmap", true, "number of map tasks.");
         options.addOption("y", "overwrite", false, "overwrite output if exists.");
         options.addOption("v", "verbose", false, "verbose mode.");
+        options.addOption("rhadoop", false, "Use Hadoop and replicate the graph.");
         options.addOption("i", "input", true, "the input graph's file name.");
         options.addOption("wd", true, "the working directory.");
         options.addOption("s", "size", true, "maximum size of clique to enumerate.");
+        options.addOption("l", "lower", true, "minimum size of clique to enumerate.");
+        options.addOption("max", false, "just maximals and upper size cliques.");
+        options.addOption("c", "count", false, "just count cliques.");
 
         parser = new BasicParser();
         commandLine = parser.parse(options, args);
@@ -190,7 +214,7 @@ public class RHadoopMain extends Configured implements Tool {
         if (commandLine.hasOption("v"))
             verbose = true;
 
-        System.exit(ToolRunner.run(null, new RHadoopMain(), args));
+        System.exit(ToolRunner.run(null, new ReplicatedHadoopMain(), args));
     }
 
 }
