@@ -18,24 +18,25 @@ import java.util.Arrays;
 public class Graph {
     LongOpenHashSet vertex_set = new LongOpenHashSet();
     public long[] vertices;
-    LongObjectOpenHashMap<long[]> adjArray = new LongObjectOpenHashMap<long[]>();
-    LongObjectOpenHashMap<LongOpenHashSet> adjSet = new LongObjectOpenHashMap<LongOpenHashSet>();
+    LongObjectOpenHashMap<long[]> adjArray = new LongObjectOpenHashMap<long[]>(1024, 0.5f);
+
+    LongObjectOpenHashMap<LongOpenHashSet> adjSet = new LongObjectOpenHashMap<LongOpenHashSet>(1024, 0.5f);
 
     private void Graph() {
     }
 
     private void addEdge(long v, long w) {
         vertex_set.add(v, w);
-        if (!adjSet.containsKey(v))
-            adjSet.put(v, new LongOpenHashSet());
-        if (!adjSet.containsKey(w))
-            adjSet.put(w, new LongOpenHashSet());
+
+        adjSet.putIfAbsent(v, new LongOpenHashSet());
+        adjSet.putIfAbsent(w, new LongOpenHashSet());
 
         adjSet.get(v).add(w);
         adjSet.get(w).add(v);
     }
 
     private void update() {
+        System.out.println("Optimizing graph structure.");
         adjArray = new LongObjectOpenHashMap<long[]>(adjSet.size());
         vertices = vertex_set.toArray();
         Arrays.sort(vertices);
@@ -44,7 +45,6 @@ public class Graph {
             Arrays.sort(adjArray.get(cursor));
             adjSet.remove(cursor);
         }
-
     }
 
     public long[] getNeighbors(long v) {
