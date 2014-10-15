@@ -22,6 +22,7 @@ public class ReplicatedMiner {
         int k = 0;
         int lower = 0;
         boolean maximal = false;
+        boolean dumpCliques = true;
 
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
@@ -35,9 +36,11 @@ public class ReplicatedMiner {
                 k = context.getConfiguration().getInt("k", 0);
                 lower = context.getConfiguration().getInt("lower", 0);
             }
-            maximal = context.getConfiguration().getBoolean("maximal", false);
             if (k == 0 || lower == 0)
                 throw new IllegalArgumentException("Bad clique size!");
+
+            maximal = context.getConfiguration().getBoolean("maximal", false);
+            dumpCliques = context.getConfiguration().getBoolean("dump", true);
         }
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
@@ -45,44 +48,72 @@ public class ReplicatedMiner {
                 context.getCounter(Counters.GraphNodes).increment(1);
                 long[] counts = new long[k + 1];
                 long v = Long.parseLong(value.toString());
-
                 Stack<KlikState> stack = new Stack<KlikState>();
                 stack.add(new KlikState(v, graph.getNeighbors(v)));
-                StringBuilder builder = new StringBuilder();
-                while (!stack.isEmpty()) {
-                    KlikState state = stack.pop();
-                    if (builder.length() > 1024 * 1024) {
-                        context.write(new Text(builder.toString()), NullWritable.get());
-                        builder.setLength(0);
-                    }
-                    if (state.subgraph.length == k - 1) {
-                        counts[k] += state.extension.elementsCount;
-                        for (LongCursor cursor : state.extension)
-                            builder.append(KlikState.cliqueToString(state.getClique(cursor.value))).append("\n");
-                    }
-                    if (state.subgraph.length >= lower) {
-                        if (!maximal) {
-                            builder.append(KlikState.cliqueToString(state.subgraph)).append("\n");
-                            counts[state.subgraph.length]++;
-                        } else if (state.extension.isEmpty() && state.tabu.isEmpty()) {
-                            builder.append(KlikState.cliqueToString(state.subgraph)).append("\n");
-                            counts[state.subgraph.length]++;
+
+                if (dumpCliques) {
+                    StringBuilder builder = new StringBuilder();
+                    while (!stack.isEmpty()) {
+                        KlikState state = stack.pop();
+                        if (builder.length() > 1024 * 1024) {
+                            context.write(new Text(builder.toString()), NullWritable.get());
+                            builder.setLength(0);
+                        }
+                        if (state.subgraph.length == k - 1) {
+                            counts[k] += state.extension.elementsCount;
+                            for (LongCursor cursor : state.extension)
+                                builder.append(KlikState.cliqueToString(state.getClique(cursor.value))).append("\n");
+                        }
+                        if (state.subgraph.length >= lower) {
+                            if (!maximal) {
+                                builder.append(KlikState.cliqueToString(state.subgraph)).append("\n");
+                                counts[state.subgraph.length]++;
+                            } else if (state.extension.isEmpty() && state.tabu.isEmpty()) {
+                                builder.append(KlikState.cliqueToString(state.subgraph)).append("\n");
+                                counts[state.subgraph.length]++;
+                            }
+                        }
+                        if (state.subgraph.length == k - 1)
+                            continue;
+
+                        for (LongCursor w : state.extension) {
+                            KlikState new_state;
+                            if (maximal)
+                                new_state = state.expandMax(w.value, graph.getNeighbors(w.value));
+                            else
+                                new_state = state.expandFixed(w.value, graph.getNeighbors(w.value));
+                            if (new_state.subgraph.length + new_state.extension.elementsCount >= lower)
+                                stack.add(new_state);
                         }
                     }
-                    if (state.subgraph.length == k - 1)
-                        continue;
+                    context.write(new Text(builder.toString()), NullWritable.get());
+                } else {
+                    while (!stack.isEmpty()) {
+                        KlikState state = stack.pop();
+                        if (state.subgraph.length == k - 1)
+                            counts[k] += state.extension.elementsCount;
 
-                    for (LongCursor w : state.extension) {
-                        KlikState new_state;
-                        if (maximal)
-                            new_state = state.expandMax(w.value, graph.getNeighbors(w.value));
-                        else
-                            new_state = state.expandFixed(w.value, graph.getNeighbors(w.value));
-                        if (new_state.subgraph.length + new_state.extension.elementsCount >= lower)
-                            stack.add(new_state);
+                        if (state.subgraph.length >= lower)
+                            if (!maximal)
+                                counts[state.subgraph.length]++;
+                            else if (state.extension.isEmpty() && state.tabu.isEmpty())
+                                counts[state.subgraph.length]++;
+
+                        if (state.subgraph.length == k - 1)
+                            continue;
+
+                        for (LongCursor w : state.extension) {
+                            KlikState new_state;
+                            if (maximal)
+                                new_state = state.expandMax(w.value, graph.getNeighbors(w.value));
+                            else
+                                new_state = state.expandFixed(w.value, graph.getNeighbors(w.value));
+                            if (new_state.subgraph.length + new_state.extension.elementsCount >= lower)
+                                stack.add(new_state);
+                        }
                     }
                 }
-                context.write(new Text(builder.toString()), NullWritable.get());
+
                 for (int i = 0; i < counts.length; i++)
                     if (counts[i] > 0) {
                         context.getCounter("Cliques", Integer.toString(i)).increment(counts[i]);

@@ -173,6 +173,8 @@ public class ReplicatedHadoopMain extends Configured implements Tool {
         job.getConfiguration().setInt("lower", lowerSize);
         if (commandLine.hasOption("max"))
             job.getConfiguration().setBoolean("maximal", true);
+        if (commandLine.hasOption("c"))
+            job.getConfiguration().setBoolean("dump", false);
         job.getConfiguration().set("mapred.output.compress", "true");
         job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.compress.map.output", "true");
