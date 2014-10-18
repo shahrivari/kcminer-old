@@ -10,7 +10,10 @@ import net.jpountz.lz4.LZ4BlockOutputStream;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 
 /**
  * Created by Saeed on 8/8/14.
@@ -216,6 +219,20 @@ public class Graph {
         g.vertices = g.vertex_set.toArray();
         Arrays.sort(g.vertices);
         return g;
+    }
+
+    class VComparer implements Comparator<Long> {
+        public int compare(Long l1, Long l2) {
+            return getNeighbors(l2).length - getNeighbors(l1).length;
+        }
+    }
+
+    public ArrayList<Long> getVerticesSortedByDegree() {
+        ArrayList<Long> longs = new ArrayList<Long>();
+        for (long l : vertices)
+            longs.add(l);
+        Collections.sort(longs, new VComparer());
+        return longs;
     }
 
 }

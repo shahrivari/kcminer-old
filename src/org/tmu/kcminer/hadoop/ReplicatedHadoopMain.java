@@ -19,10 +19,7 @@ import org.tmu.kcminer.KlikState;
 import org.tmu.kcminer.Main;
 import org.tmu.kcminer.Stopwatch;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -134,8 +131,9 @@ public class ReplicatedHadoopMain extends Configured implements Tool {
         for (int i = 0; i < nMaps; i++)
             chunks.add(new StringBuilder());
 
+        ArrayList<Long> vs = graph.getVerticesSortedByDegree();
         int list_i = 0;
-        for (long l : graph.vertices) {
+        for (long l : vs) {
             chunks.get(list_i).append(l + "\n");
             list_i = (list_i + 1) % nMaps;
             new KlikState(l, graph.getNeighbors(l));
@@ -157,7 +155,12 @@ public class ReplicatedHadoopMain extends Configured implements Tool {
         }
         System.out.println(nMaps + ".");
 
-        Job job = new Job(getConf(), "KCMinerRep");
+        Job job = null;
+        if (commandLine.hasOption("c"))
+            job = new Job(getConf(), "KCMinerRep-Counter-" + new File(input_path).getName() + "-" + cliqueSize);
+        else
+            job = new Job(getConf(), "KCMinerRep-" + new File(input_path).getName() + "-" + cliqueSize);
+
         job.setJarByClass(ReplicatedHadoopMain.class);
         if (commandLine.hasOption("c"))
             job.setMapperClass(ReplicatedCounter.Map.class);

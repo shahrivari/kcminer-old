@@ -47,8 +47,8 @@ public class ReplicatedCounter {
                 long v = Long.parseLong(value.toString());
 
                 Stack<KlikState> stack = new Stack<KlikState>();
+                System.out.println(v + "->" + graph.getNeighbors(v).length);
                 stack.add(new KlikState(v, graph.getNeighbors(v)));
-                StringBuilder builder = new StringBuilder();
                 while (!stack.isEmpty()) {
                     KlikState state = stack.pop();
                     if (state.subgraph.length >= lower) {
@@ -57,8 +57,10 @@ public class ReplicatedCounter {
                         else if (state.extension.isEmpty() && state.tabu.isEmpty())
                             counts[state.subgraph.length]++;
                     }
-                    if (state.subgraph.length == k - 1)
+                    if (state.subgraph.length == k - 1) {
+                        counts[k] += state.extension.elementsCount;
                         continue;
+                    }
 
                     for (LongCursor w : state.extension) {
                         KlikState new_state;
