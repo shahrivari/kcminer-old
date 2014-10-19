@@ -1,5 +1,7 @@
 package org.tmu.kcminer.hadoop;
 
+import com.carrotsearch.hppc.LongArrayList;
+import com.carrotsearch.hppc.cursors.LongCursor;
 import org.apache.commons.cli.*;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -133,10 +135,19 @@ public class ReplicatedHadoopMain extends Configured implements Tool {
 
         ArrayList<Long> vs = graph.getVerticesSortedByDegree();
         int list_i = 0;
+        double avg_deg = graph.getAverageDegree();
         for (long l : vs) {
-            chunks.get(list_i).append(l + "\n");
-            list_i = (list_i + 1) % nMaps;
-            new KlikState(l, graph.getNeighbors(l));
+            if (graph.getNeighbors(l).length < avg_deg * avg_deg) {
+                chunks.get(list_i).append(l + "\n");
+                list_i = (list_i + 1) % nMaps;
+            } else {
+                LongArrayList ext = new KlikState(l, graph.getNeighbors(l)).extension;
+                for (LongCursor m : ext) {
+                    chunks.get(list_i).append(l + "," + m.value + "\n");
+                    list_i = (list_i + 1) % nMaps;
+                }
+            }
+
         }
 
         System.out.print("Writing input for Map #:");
@@ -183,7 +194,7 @@ public class ReplicatedHadoopMain extends Configured implements Tool {
         job.getConfiguration().set("mapred.compress.map.output", "true");
         job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.task.timeout", "36000000");
-        job.getConfiguration().set("mapred.max.split.size", "524288");
+        job.getConfiguration().set("mapred.max.split.size", "4096000");
         FileInputFormat.addInputPath(job, new Path(WORK_DIR + "/chunks"));
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);

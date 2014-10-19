@@ -89,6 +89,13 @@ public class Graph {
         return info;
     }
 
+    public double getAverageDegree() {
+        long edges = 0;
+        for (LongObjectCursor<long[]> x : adjArray)
+            edges += x.value.length;
+        return edges / (double) vertices.length;
+    }
+
     public void writeToStream(OutputStream ostream) throws IOException {
         LZ4BlockOutputStream lzs = new LZ4BlockOutputStream(ostream);
         DataOutputStream dstream = new DataOutputStream(lzs);
