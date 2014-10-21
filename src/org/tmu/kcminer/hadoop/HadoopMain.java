@@ -106,7 +106,7 @@ public class HadoopMain extends Configured implements Tool {
             throw new IOException("Cannot create input directory " + WORK_DIR);
         }
 
-        Job job = new Job(getConf(), "GraphInit");
+        Job job = new Job(getConf(), "GraphInit-" + input_path.getName());
         job.setJarByClass(HadoopMain.class);
         job.setMapperClass(GraphLayer.Map.class);
         job.setReducerClass(GraphLayer.Reduce.class);
@@ -121,7 +121,7 @@ public class HadoopMain extends Configured implements Tool {
         job.getConfiguration().set("mapred.compress.map.output", "true");
         job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.task.timeout", "36000000");
-        job.getConfiguration().set("mapred.max.split.size", "524288");
+        job.getConfiguration().set("mapred.max.split.size", "32000000");
         FileInputFormat.addInputPath(job, input_path);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
@@ -142,7 +142,7 @@ public class HadoopMain extends Configured implements Tool {
         job.getConfiguration().set("working_dir", WORK_DIR);
         job.getConfiguration().set("clique_size", Integer.toString(cliqueSize));
         job.getConfiguration().set("mapred.output.compress", "true");
-        job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
+        job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.compress.map.output", "true");
         job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
         job.getConfiguration().set("mapred.task.timeout", "36000000");
@@ -157,7 +157,7 @@ public class HadoopMain extends Configured implements Tool {
         System.out.printf("Took %s.\n", stopwatch);
 
         for (int step = 2; step < cliqueSize; step++) {
-            job = new Job(getConf(), Integer.toString(step) + "-Cliques");
+            job = new Job(getConf(), Integer.toString(step) + "-Cliques-" + input_path.getName());
             job.setJarByClass(HadoopMain.class);
             job.setMapperClass(KlikMR.Map.class);
             job.setReducerClass(KlikMR.Reduce.class);
@@ -168,8 +168,10 @@ public class HadoopMain extends Configured implements Tool {
             job.setPartitionerClass(RandomLongPartitioner.class);
             job.getConfiguration().set("working_dir", WORK_DIR);
             job.getConfiguration().set("clique_size", Integer.toString(cliqueSize));
+            job.getConfiguration().set("io.sort.mb", "512");
+            job.getConfiguration().set("io.sort.factor", "64");
             job.getConfiguration().set("mapred.output.compress", "true");
-            job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.GzipCodec");
+            job.getConfiguration().set("mapred.output.compression.codec", "org.apache.hadoop.io.compress.SnappyCodec");
             job.getConfiguration().set("mapred.compress.map.output", "true");
             job.getConfiguration().set("mapred.map.output.compress.codec", "org.apache.hadoop.io.compress.SnappyCodec");
             job.getConfiguration().set("mapred.task.timeout", "36000000");
@@ -187,7 +189,7 @@ public class HadoopMain extends Configured implements Tool {
         }
 
         System.out.println("Final Step.");
-        job = new Job(getConf(), "Final: " + Integer.toString(cliqueSize) + "-Cliques");
+        job = new Job(getConf(), "Final: " + Integer.toString(cliqueSize) + "-Cliques-" + input_path.getName());
         job.setJarByClass(HadoopMain.class);
         job.setMapperClass(LastKlik.Map.class);
         job.setNumReduceTasks(0);
