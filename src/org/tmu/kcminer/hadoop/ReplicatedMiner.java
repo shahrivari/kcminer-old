@@ -58,7 +58,7 @@ public class ReplicatedMiner {
                     long v = Long.parseLong(tokens[0]);
                     long w1 = Long.parseLong(tokens[1]);
                     KlikState state = new KlikState(v, graph.getNeighbors(v));
-                    System.out.print("(" + v + "," + w1 + ")->(");
+                    //System.out.print("(" + v + "," + w1 + ")->(");
                     for (LongCursor w : state.extension) {
                         if (w1 != w.value)
                             continue;
@@ -70,13 +70,13 @@ public class ReplicatedMiner {
                             new_state = state.expandFixed(w.value, graph.getNeighbors(w.value));
 
                         stack.add(new_state);
-                        System.out.println(graph.getNeighbors(v).length + "," + graph.getNeighbors(w1).length + ")");
+                        //System.out.println(graph.getNeighbors(v).length + "," + graph.getNeighbors(w1).length + ")");
                         context.getCounter("Input", "Edges").increment(1);
                         break;
                     }
                 } else {
                     long v = Long.parseLong(value.toString());
-                    System.out.println(v + "->" + graph.getNeighbors(v).length);
+                    //System.out.println(v + "->" + graph.getNeighbors(v).length);
                     context.getCounter("Input", "Nodes").increment(1);
                     stack.add(new KlikState(v, graph.getNeighbors(v)));
                 }

@@ -201,8 +201,10 @@ public class ReplicatedHadoopMain extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/output"));
         job.setNumReduceTasks(0);
 
+        System.out.printf("Initialization Took %s.\n", stopwatch);
+        stopwatch.reset().start();
         job.waitForCompletion(true);
-        System.out.printf("Took %s.\n", stopwatch);
+        System.out.printf("MapReduce Job Took %s.\n", stopwatch);
         return 1;
 
     }
