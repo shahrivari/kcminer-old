@@ -6,8 +6,10 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.tmu.kcminer.KlikState;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Random;
+import java.util.UUID;
 
 /**
  * Created by Saeed on 8/26/14.
@@ -23,7 +25,7 @@ public class KlikMR {
         public void map(LongWritable key, LongArrayWritable value, Context context) throws IOException, InterruptedException {
             if (value.termination == GraphLayer.termination) {
                 context.write(key, value);
-                context.getCounter("Graph", "#Nodes").increment(1);
+                context.getCounter("Stats", "#Nodes").increment(1);
                 return;
             }
             KlikState state = KlikState.fromLongs(value.array);
@@ -41,6 +43,10 @@ public class KlikMR {
             long[] w_neighbors = null;
             ArrayList<long[]> list = new ArrayList<long[]>();
 
+            String temp_name = UUID.randomUUID().toString();
+            FileOutputStream fos = new FileOutputStream(temp_name);
+            DataOutputStream dstream = new DataOutputStream(fos);
+
             for (LongArrayWritable v : values) {
                 if (v.termination == GraphLayer.termination) {
                     w_neighbors = v.array;
@@ -48,6 +54,12 @@ public class KlikMR {
                 }
                 if (w_neighbors == null && v.termination != GraphLayer.termination) {
                     list.add(v.array.clone());
+                    if (list.size() > 32 * 1024) {
+                        for (long[] lw : list)
+                            new LongArrayWritable(lw, termination).write(dstream);
+                        list.clear();
+                        context.getCounter("Stats", "DiskFile").increment(1);
+                    }
                     continue;
                 }
                 KlikState state = KlikState.fromLongs(v.array);
@@ -62,6 +74,9 @@ public class KlikMR {
                 context.getCounter("#States", Integer.toString(new_state.subgraph.length)).increment(1);
             }
 
+            dstream.close();
+            fos.close();
+
             for (long[] v : list) {
                 KlikState state = KlikState.fromLongs(v);
                 KlikState new_state;
@@ -72,8 +87,35 @@ public class KlikMR {
 //                    if (new_state.subgraph.length + new_state.extension.elementsCount >= lower)
 //                        stack.add(new_state);
                 context.write(key, new LongArrayWritable(new_state.toLongs(), termination));
-                context.getCounter("States", Integer.toString(new_state.subgraph.length)).increment(1);
+                context.getCounter("#States", Integer.toString(new_state.subgraph.length)).increment(1);
             }
+
+            FileInputStream fis = new FileInputStream(temp_name);
+            DataInputStream distream = new DataInputStream(fis);
+            LongArrayWritable law = new LongArrayWritable();
+            while (true) {
+                try {
+                    law.readFields(distream);
+                    KlikState state = KlikState.fromLongs(law.array);
+                    KlikState new_state;
+                    if (maximal)
+                        new_state = state.expandMax(w, w_neighbors);
+                    else
+                        new_state = state.expandFixed(w, w_neighbors);
+//                    if (new_state.subgraph.length + new_state.extension.elementsCount >= lower)
+//                        stack.add(new_state);
+                    context.write(key, new LongArrayWritable(new_state.toLongs(), termination));
+                    context.getCounter("#States", Integer.toString(new_state.subgraph.length)).increment(1);
+
+                } catch (IOException exp) {
+                    break;
+                }
+            }
+
+            distream.close();
+            fis.close();
+
+            new File(temp_name).delete();
 
         }
     }
