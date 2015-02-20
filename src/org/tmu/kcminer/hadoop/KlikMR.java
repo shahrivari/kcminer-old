@@ -8,7 +8,7 @@ import org.tmu.kcminer.KlikState;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Random;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -38,6 +38,13 @@ public class KlikMR {
 
     public static class Reduce extends Reducer<LongWritable, LongArrayWritable, LongWritable, LongArrayWritable> {
 
+        private static int sizeof(List<long[]> list) {
+            int size = 0;
+            for (long[] v : list)
+                size += v.length;
+            return size;
+        }
+
         public void reduce(LongWritable key, Iterable<LongArrayWritable> values, Context context) throws IOException, InterruptedException {
             long w = key.get();
             long[] w_neighbors = null;
@@ -54,7 +61,7 @@ public class KlikMR {
                 }
                 if (w_neighbors == null && v.termination != GraphLayer.termination) {
                     list.add(v.array.clone());
-                    if (list.size() > 32 * 1024) {
+                    if (sizeof(list) > 10 * 1024 * 1024) {
                         for (long[] lw : list)
                             new LongArrayWritable(lw, termination).write(dstream);
                         list.clear();
