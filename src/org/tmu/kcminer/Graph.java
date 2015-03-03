@@ -85,7 +85,12 @@ public class Graph {
         for (LongObjectCursor<long[]> x : adjArray)
             edges += x.value.length;
         info += "#Edges: " + String.format("%,d", edges) + "\n";
-        info += "AVG(degree): " + String.format("%.2f", edges / (double) vertices.length);
+        double mean_degree = edges / (double) vertices.length;
+        info += "AVG(degree): " + String.format("%.2f\n", mean_degree);
+        double variance = 0;
+        for (LongObjectCursor<long[]> x : adjArray)
+            variance += (mean_degree - x.value.length) * (mean_degree - x.value.length);
+        info += "STD(degree): " + String.format("%.2f\n", Math.sqrt(variance / vertices.length));
         return info;
     }
 
@@ -241,5 +246,6 @@ public class Graph {
         Collections.sort(longs, new VComparer());
         return longs;
     }
+
 
 }
