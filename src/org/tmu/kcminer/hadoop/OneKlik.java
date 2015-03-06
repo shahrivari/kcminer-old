@@ -15,6 +15,7 @@ public class OneKlik {
             KlikState state = new KlikState(key.get(), value.array);
             long[] array = state.toLongs();
             context.write(key, new LongArrayWritable(array, KlikMR.termination));
+            context.getCounter("#States", "1").increment(1);
         }
 
     }

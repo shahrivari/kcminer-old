@@ -23,6 +23,8 @@ import org.tmu.kcminer.Stopwatch;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Saeed on 8/24/14.
@@ -42,6 +44,9 @@ public class HadoopMain extends Configured implements Tool {
 
     @Override
     public int run(String[] strings) throws Exception {
+        List<Long> millis = new ArrayList<Long>();
+        List<Long> numStates = new ArrayList<Long>();
+
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.start();
 
@@ -130,7 +135,10 @@ public class HadoopMain extends Configured implements Tool {
         job.setNumReduceTasks(nReduces);
 
         job.waitForCompletion(true);
-        System.out.printf("Took %s.\n", stopwatch);
+        System.out.printf("Init took %s.\n", stopwatch);
+        millis.add(stopwatch.elapsedMillis());
+        numStates.add(0L);
+        stopwatch.reset().start();
 
 
         job = new Job(getConf(), "OneCliques");
@@ -154,7 +162,10 @@ public class HadoopMain extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/1"));
 
         job.waitForCompletion(true);
-        System.out.printf("Took %s.\n", stopwatch);
+        System.out.printf("1-cliques took %s.\n", stopwatch);
+        numStates.add(job.getCounters().findCounter("#States", "1").getValue());
+        millis.add(stopwatch.elapsedMillis());
+        stopwatch.reset().start();
 
         for (int step = 2; step < cliqueSize; step++) {
             job = new Job(getConf(), Integer.toString(step) + "-Cliques-" + input_path.getName());
@@ -185,7 +196,11 @@ public class HadoopMain extends Configured implements Tool {
             System.out.println("Doing cliques of size: " + step);
 
             job.waitForCompletion(true);
-            System.out.printf("Took %s.\n", stopwatch);
+
+            System.out.printf(step + "-cliques took %s.\n", stopwatch);
+            numStates.add(job.getCounters().findCounter("#States", Integer.toString(step)).getValue());
+            millis.add(stopwatch.elapsedMillis());
+            stopwatch.reset().start();
         }
 
         System.out.println("Final Step.");
@@ -209,11 +224,21 @@ public class HadoopMain extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job, new Path(WORK_DIR + "/" + Integer.toString(cliqueSize)));
 
         job.waitForCompletion(true);
-        System.out.printf("Took %s.\n", stopwatch);
+        System.out.printf("Final step took %s.\n", stopwatch);
+        numStates.add(job.getCounters().findCounter("#Cliques", Integer.toString(cliqueSize)).getValue());
+        millis.add(stopwatch.elapsedMillis());
+        stopwatch.reset().start();
 
+        System.out.println("Graph: " + input_path.getName());
+        System.out.println("Overall stats:");
+        long allmilli = 0l;
+        for (int i = 0; i < millis.size(); i++) {
+            allmilli += millis.get(i);
+            System.out.printf("Step: %d \ttime: %,d \tstates: %,d\n", i, millis.get(i), numStates.get(i));
+        }
+        System.out.printf("Overall time: %,d \n", allmilli);
 
         return 1;
-
     }
 
     public static void main(String[] args) throws Exception {
