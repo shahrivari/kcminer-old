@@ -43,36 +43,6 @@ public class IntKlikState {
     }
 
 
-//    public static long count(IntGraph g, int l, int k) throws IOException {
-//        long count = 0;
-//        Stack<IntKlikState> q = new Stack<IntKlikState>();
-//        for (int v : g.vertices) {
-//            q.add(new IntKlikState(v, g.getNeighbors(v)));
-//        }
-//
-//        while (!q.isEmpty()) {
-//            IntKlikState state = q.pop();
-//            if (state.subgraph.length == k - 1) {
-//                count++;
-//                System.out.println(Arrays.toString(state.subgraph));
-//            }
-//            if (state.subgraph.length >= l) {
-//                count += state.extension.length;
-//                for (int w : state.extension)
-//                    System.out.println(Arrays.toString(addToArray(state.subgraph, w)));
-//            }
-//            if (state.subgraph.length == k - 1)
-//                continue;
-//
-//            for (int w : state.extension) {
-//                IntKlikState new_state = state.expand(w, g.getNeighbors(w));
-//                if (new_state.subgraph.length + new_state.extension.length >= l)
-//                    q.addToArray(new_state);
-//            }
-//        }
-//        return count;
-//    }
-
     public static long parallelCount(final IntGraph g, final int lower, final int k, final int thread_count) throws IOException, InterruptedException {
         final AtomicLong counter = new AtomicLong();
         final ConcurrentLinkedQueue<Integer> cq = new ConcurrentLinkedQueue<Integer>();
