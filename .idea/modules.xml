@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/kcminer.iml" filepath="$PROJECT_DIR$/kcminer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/kcminer-old.iml" filepath="$PROJECT_DIR$/kcminer-old.iml" />
     </modules>
   </component>
 </project>
-

@@ -1,8 +1,8 @@
 <component name="ArtifactManager">
-  <artifact type="jar" build-on-make="true" name="kcminer:jar">
+  <artifact type="jar" build-on-make="true" name="kcminer-old:jar">
     <output-path>$PROJECT_DIR$/out</output-path>
-    <root id="archive" name="kcminer.jar">
-      <element id="module-output" name="kcminer" />
+    <root id="archive" name="kcminer-old.jar">
+      <element id="module-output" name="kcminer-old" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/hppc-0.6.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-cli-1.2.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/lz4-1.2.0.jar" path-in-jar="/" />
